@@ -1,4 +1,4 @@
-load("//tools:codeowners.bzl", "generate_codeowners")
+load("//tools:codeowners.bzl", "generate_codeowners", "codeowners")
 
 generate_codeowners(
     name = "github_codeowners",
@@ -6,12 +6,19 @@ generate_codeowners(
         "//tests/hey/sub:codeowners",
         "//tests/hey:codeowners",
         "//tests/heyoo:codeowners",
+        ":py_files",
     ],
+)
+
+codeowners(
+    name = "py_files",
+    pattern = "*.py",
+    team = "@the-python-dev",
 )
 
 sh_test(
     name = "validate_codeowners",
-    srcs = [":diff.sh"],
+    srcs = ["//tools:diff.sh"],
     args = [
         "$(location :github_codeowners.out)",
         "$(location github_codeowners_golden)",
@@ -33,7 +40,7 @@ generate_codeowners(
 
 sh_test(
     name = "validate_codeowners_other_order",
-    srcs = [":diff.sh"],
+    srcs = ["//tools:diff.sh"],
     args = [
         "$(location :github_codeowners_other_order.out)",
         "$(location github_codeowners_other_order_golden)",
