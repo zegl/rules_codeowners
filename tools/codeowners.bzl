@@ -1,8 +1,15 @@
 def _codeowners_impl(ctx):
+    path = "/" + ctx.label.package + "/"
+
+    # The PATH will be set to the empty string,
+    # if the codeowners is defined in the ROOT of the WORKSPACE
+    if ctx.label.package == "":
+        path = ""
+
     env = {
         "TEAM": ctx.attr.team,
-        "PATH": ctx.label.package,
         "OUTFILE": ctx.outputs.outfile.path,
+        "PATH": path,
     }
 
     # Add optional extra pattern
@@ -14,7 +21,7 @@ def _codeowners_impl(ctx):
         command = """
 set -euo pipefail
 
-echo "/${PATH}/${PATTERN:-} $TEAM" > "$OUTFILE"
+echo "${PATH}${PATTERN:-} $TEAM" > "$OUTFILE"
 """,
         env = env,
     )
