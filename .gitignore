@@ -1,0 +1,4 @@
+bazel-*
+.bazelproject
+.ijwb
+
