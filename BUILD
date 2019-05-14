@@ -1,4 +1,4 @@
-load("//tools:codeowners.bzl", "generate_codeowners", "codeowners")
+load("//tools:codeowners.bzl", "codeowners", "generate_codeowners")
 
 codeowners(
     name = "wildcard",
