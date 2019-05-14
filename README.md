@@ -38,3 +38,24 @@ The `generate_codeowners` rule (`//:codeowners`), can be built with Bazel to cre
 the complete CODEOWNERS file, the generated file will be located at `bazel-bin/codeowners` by default.
 
 `bazel build //:codeowners`
+
+## Making sure that the CODEOWNERS is up to date
+
+It's not possible for Bazel to output files to the workspace, but it _is_ possible to compare the current CODEOWNERS
+with the generated version, to remind you that it's out of date with a `sh_test`.
+
+
+```bzl
+sh_test(
+    name = "validate_codeowoners_up_to_date",
+    srcs = ["//tools:diff.sh"],
+    args = [
+        "$(location :generate_codeowners.out)",
+        "$(location CODEOWNERS)",
+    ],
+    data = [
+        "CODEOWNERS",
+        ":generate_codeowners.out",
+    ],
+)
+```
