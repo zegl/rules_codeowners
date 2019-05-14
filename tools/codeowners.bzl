@@ -14,7 +14,7 @@ def _codeowners_impl(ctx):
         command = """
 set -euo pipefail
 
-echo /${PATH}/${PATTERN:-} $TEAM > "$OUTFILE"
+echo "/${PATH}/${PATTERN:-} $TEAM" > "$OUTFILE"
 """,
         env = env,
     )
