@@ -2,7 +2,7 @@ def _codeowners_impl(ctx):
     env = {
         "TEAM": ctx.attr.team,
         "PATH": ctx.label.package,
-        "OUTFILE": ctx.outputs.outfile.path
+        "OUTFILE": ctx.outputs.outfile.path,
     }
 
     # Add optional extra pattern
@@ -61,9 +61,9 @@ done
 generate_codeowners = rule(
     implementation = _generate_codeowners_impl,
     attrs = {
-        "owners" : attr.label_list(),
+        "owners": attr.label_list(),
     },
     outputs = {
-        "outfile": "%{name}",
+        "outfile": "%{name}.out",
     },
 )
