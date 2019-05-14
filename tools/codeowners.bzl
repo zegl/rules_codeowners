@@ -1,18 +1,29 @@
 def _codeowners_impl(ctx):
+    env = {
+        "TEAM": ctx.attr.team,
+        "PATH": ctx.label.package,
+        "OUTFILE": ctx.outputs.outfile.path
+    }
+
+    # Add optional extra pattern
+    if ctx.attr.pattern:
+        env.update({"PATTERN": ctx.attr.pattern})
+
     ctx.actions.run_shell(
         outputs = [ctx.outputs.outfile],
-        command = "echo /$PATH $TEAM > \"$OUTFILE\"",
-        env = {
-            "TEAM": ctx.attr.team,
-            "PATH": ctx.label.package,
-            "OUTFILE": ctx.outputs.outfile.path
-        }
+        command = """
+set -euo pipefail
+
+echo /${PATH}/${PATTERN:-} $TEAM > "$OUTFILE"
+""",
+        env = env,
     )
 
 codeowners = rule(
     implementation = _codeowners_impl,
     attrs = {
-        "team": attr.string(),
+        "team": attr.string(mandatory = True),
+        "pattern": attr.string(mandatory = False),
     },
     outputs = {
         "outfile": "%{name}.out",
@@ -42,7 +53,7 @@ echo "" >> "$OUTFILE"
 
 for file in "$@"
 do
-    cat $file >> "$OUTFILE"
+    cat "$file" >> "$OUTFILE"
 done
         """,
     )
