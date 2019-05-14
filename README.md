@@ -11,6 +11,10 @@ codeowners(
     name = "codeowners",
     team = "@org/foo2",
     visibility = ["//visibility:public"],
+
+    # Optional rules below
+    pattern = "*.js" # Adds pattern to the end of the path if this rule label is
+                     # //foo/bar:codeowner, this would create an entry for /foo/bar/*.js
 )
 ```
 
