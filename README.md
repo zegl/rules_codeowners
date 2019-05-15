@@ -2,6 +2,12 @@
 
 Use Bazel to create GitHub CODEOWNERS.
 
+CODEOWNERS on GitHub is flawed in the way that there can only be one CODEOWNERS file.
+
+`rules_codeowners` allows you to define the CODEOWNERS at all levels in the repo, and then generating the final CODEOWNERs file. 
+
+---
+
 Add something like this to BUILD files in your WORKSPACE.
 
 ```bzl
