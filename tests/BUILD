@@ -7,6 +7,7 @@ generate_codeowners(
         "//tests/hey:codeowners",
         "//tests/heyoo:codeowners",
         ":py_files",
+        ":multi_team",
     ],
 )
 
@@ -14,6 +15,15 @@ codeowners(
     name = "py_files",
     pattern = "*.py",
     team = "@the-python-dev",
+)
+
+codeowners(
+    name = "multi_team",
+    pattern = "*.html",
+    teams = [
+        "@the-css-team",
+        "@the-html-team",
+    ],
 )
 
 sh_test(
