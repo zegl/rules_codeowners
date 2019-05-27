@@ -5,3 +5,4 @@
 /tests/hey/ @org/foo
 /tests/heyoo/*.js @org/bar
 /tests/*.py @the-python-dev
+/tests/*.html @the-css-team @the-html-team

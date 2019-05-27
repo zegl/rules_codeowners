@@ -6,11 +6,20 @@ def _codeowners_impl(ctx):
     if ctx.label.package == "":
         path = ""
 
+    if len(ctx.attr.team) == 0 and len(ctx.attr.teams) == 0:
+        fail("Either team or teams must be set.")
+    if len(ctx.attr.team) > 0 and len(ctx.attr.teams) > 0:
+        fail("Both team and teams can not be set at the same time.")
+
     env = {
-        "TEAM": ctx.attr.team,
         "OUTFILE": ctx.outputs.outfile.path,
         "PATH": path,
     }
+
+    if len(ctx.attr.team) > 0:
+        env.update({"TEAMS": ctx.attr.team})
+    else:
+        env.update({"TEAMS": " ".join(ctx.attr.teams)})
 
     # Add optional extra pattern
     if ctx.attr.pattern:
@@ -21,7 +30,7 @@ def _codeowners_impl(ctx):
         command = """
 set -euo pipefail
 
-echo "${PATH}${PATTERN:-} $TEAM" > "$OUTFILE"
+echo "${PATH}${PATTERN:-} $TEAMS" > "$OUTFILE"
 """,
         env = env,
     )
@@ -29,7 +38,8 @@ echo "${PATH}${PATTERN:-} $TEAM" > "$OUTFILE"
 codeowners = rule(
     implementation = _codeowners_impl,
     attrs = {
-        "team": attr.string(mandatory = True),
+        "team": attr.string(mandatory = False, doc = "The GitHub team that should get ownership of the matching files. One of team and teams must be set."),
+        "teams": attr.string_list(mandatory = False, doc = "A list of the GitHub teams that should get ownership of the matching files. One of team and teams must be set."),
         "pattern": attr.string(mandatory = False),
     },
     outputs = {

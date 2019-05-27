@@ -4,7 +4,7 @@ Use Bazel to create GitHub CODEOWNERS.
 
 CODEOWNERS on GitHub is flawed in the way that there can only be one CODEOWNERS file.
 
-`rules_codeowners` allows you to define the CODEOWNERS at all levels in the repo, and then generating the final CODEOWNERs file. 
+`rules_codeowners` allows you to define the CODEOWNERS at all levels in the repo, and then generating the final CODEOWNERs file.
 
 ## Usage
 
@@ -34,7 +34,11 @@ load("@rules_codeowners//tools:codeowners.bzl", "codeowners", "generate_codeowne
 # Define one or many codeowners, should be added at multiple levels in the repo
 codeowners(
     name = "team_rule",
+
+    # Set either team or teams to assign the GitHub team ownership
     team = "@org/foo",
+    # teams = ["@org/team1", "@org/team2"],
+
     visibility = ["//visibility:public"],
 
     # Optional rules below
