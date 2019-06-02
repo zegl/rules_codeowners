@@ -1,0 +1,18 @@
+version: 2
+jobs:
+  test:
+    docker:
+      - image: circleci/openjdk:11-jdk-stretch
+    steps:
+    - run: sudo apt-get install pkg-config zip g++ zlib1g-dev unzip python
+    - run: wget -O /tmp/bazel-installer.sh https://github.com/bazelbuild/bazel/releases/download/0.26.0/bazel-0.26.0-installer-linux-x86_64.sh
+    - run: chmod +x /tmp/bazel-installer.sh
+    - run: /tmp/bazel-installer.sh --user
+    - checkout
+    - run: $HOME/bin/bazel test //...
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - test
