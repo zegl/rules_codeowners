@@ -62,6 +62,33 @@ sh_test(
     ],
 )
 
+generate_codeowners(
+    name = "github_codeowners_auto_sort",
+    owners = [
+        ":py_files",
+        ":multi_team",
+        "//tests/hey/sub/sub2:codeowners",
+        "//tests/hey/sub/sub3:codeowners",
+        "//tests/heyoo:codeowners",
+        "//tests/hey/sub:codeowners",
+        "//tests/hey:codeowners",
+    ],
+    sort = True,
+)
+
+sh_test(
+    name = "validate_codeowners_auto_sort",
+    srcs = ["//tools:diff.sh"],
+    args = [
+        "$(location :github_codeowners_auto_sort.out)",
+        "$(location github_codeowners_auto_sort_golden)",
+    ],
+    data = [
+        "github_codeowners_auto_sort_golden",
+        ":github_codeowners_auto_sort.out",
+    ],
+)
+
 failure_testing_test(
     name = "both_team_and_teams_set",
     expected = "Both team and teams can not be set at the same time.",

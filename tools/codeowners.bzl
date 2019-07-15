@@ -54,12 +54,16 @@ def _generate_codeowners_impl(ctx):
         all_ownerships.append(owner.files.to_list()[0].path)
         all_ownerships_files.append(owner.files.to_list()[0])
 
+    unsorted_tmp_file = ctx.actions.declare_file(ctx.label.name + "_unsorted")
+
     ctx.actions.run_shell(
-        outputs = [ctx.outputs.outfile],
+        outputs = [ctx.outputs.outfile, unsorted_tmp_file],
         inputs = all_ownerships_files,
         arguments = all_ownerships,
         env = {
             "OUTFILE": ctx.outputs.outfile.path,
+            "UNSORTED_FILE": unsorted_tmp_file.path,
+            "SORT": "true" if ctx.attr.sort else "false",
         },
         command = """
 set -euo pipefail
@@ -70,15 +74,23 @@ echo "" >> "$OUTFILE"
 
 for file in "$@"
 do
-    cat "$file" >> "$OUTFILE"
+    cat "$file" >> "$UNSORTED_FILE"
 done
-        """,
+
+# Optional sorting, the most specific rule will appear last in the output
+if "$SORT"; then
+    cat "$UNSORTED_FILE" | sort >> "$OUTFILE"
+else
+    cat "$UNSORTED_FILE" >> "$OUTFILE"
+fi
+""",
     )
 
 generate_codeowners = rule(
     implementation = _generate_codeowners_impl,
     attrs = {
         "owners": attr.label_list(),
+        "sort": attr.bool(default = False, mandatory = False),
     },
     outputs = {
         "outfile": "%{name}.out",
