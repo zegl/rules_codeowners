@@ -63,7 +63,7 @@ def _generate_codeowners_impl(ctx):
         env = {
             "OUTFILE": ctx.outputs.outfile.path,
             "UNSORTED_FILE": unsorted_tmp_file.path,
-            "SORT": "true" if ctx.attr.sort else "false"
+            "SORT": "true" if ctx.attr.sort else "false",
         },
         command = """
 set -euo pipefail

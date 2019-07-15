@@ -64,7 +64,6 @@ sh_test(
 
 generate_codeowners(
     name = "github_codeowners_auto_sort",
-    sort = True,
     owners = [
         ":py_files",
         ":multi_team",
@@ -74,6 +73,7 @@ generate_codeowners(
         "//tests/hey/sub:codeowners",
         "//tests/hey:codeowners",
     ],
+    sort = True,
 )
 
 sh_test(
