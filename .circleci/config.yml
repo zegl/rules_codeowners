@@ -1,6 +1,6 @@
 version: 2
 jobs:
-  test:
+  test-bazel-27:
     docker:
       - image: circleci/openjdk:11-jdk-stretch
     steps:
@@ -11,8 +11,32 @@ jobs:
     - checkout
     - run: $HOME/bin/bazel test //...
 
+  test-bazel-28:
+    docker:
+      - image: circleci/openjdk:11-jdk-stretch
+    steps:
+    - run: sudo apt-get update && sudo apt-get install pkg-config zip g++ zlib1g-dev unzip python
+    - run: wget -O /tmp/bazel-installer.sh https://github.com/bazelbuild/bazel/releases/download/0.28.1/bazel-0.28.1-installer-linux-x86_64.sh
+    - run: chmod +x /tmp/bazel-installer.sh
+    - run: /tmp/bazel-installer.sh --user
+    - checkout
+    - run: $HOME/bin/bazel test //...
+
+  test-bazel-29:
+    docker:
+      - image: circleci/openjdk:11-jdk-stretch
+    steps:
+    - run: sudo apt-get update && sudo apt-get install pkg-config zip g++ zlib1g-dev unzip python
+    - run: wget -O /tmp/bazel-installer.sh https://releases.bazel.build/0.29.0/rc8/bazel-0.29.0rc8-installer-linux-x86_64.sh
+    - run: chmod +x /tmp/bazel-installer.sh
+    - run: /tmp/bazel-installer.sh --user
+    - checkout
+    - run: $HOME/bin/bazel test //...
+
 workflows:
   version: 2
   build_and_test:
     jobs:
-      - test
+      - test-bazel-27
+      - test-bazel-28
+      - test-bazel-29
