@@ -33,16 +33,13 @@ codeowners = rule(
 )
 
 def _generate_codeowners_impl(ctx):
-    all_ownerships = []
-    all_ownerships_files = []
-    for owner in ctx.attr.owners:
-        all_ownerships.append(owner.files.to_list()[0].path)
-        all_ownerships_files.append(owner.files.to_list()[0])
+    all_ownership_files = [file for owner in ctx.attr.owners for file in owner.files.to_list()]
+    all_ownership_paths = [file.path for file in all_ownership_files]
 
     ctx.actions.run_shell(
         outputs = [ctx.outputs.outfile],
-        inputs = all_ownerships_files,
-        arguments = all_ownerships,
+        inputs = all_ownership_files,
+        arguments = all_ownership_paths,
         env = {
             "OUTFILE": ctx.outputs.outfile.path,
         },
