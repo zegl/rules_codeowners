@@ -11,28 +11,13 @@ def _codeowners_impl(ctx):
     if len(ctx.attr.team) > 0 and len(ctx.attr.teams) > 0:
         fail("Both team and teams can not be set at the same time.")
 
-    env = {
-        "OUTFILE": ctx.outputs.outfile.path,
-        "PATH": path,
-    }
-
+    teams = ctx.attr.teams
     if len(ctx.attr.team) > 0:
-        env.update({"TEAMS": ctx.attr.team})
-    else:
-        env.update({"TEAMS": " ".join(ctx.attr.teams)})
+        teams = [ctx.attr.team]
 
-    # Add optional extra pattern
-    if ctx.attr.pattern:
-        env.update({"PATTERN": ctx.attr.pattern})
-
-    ctx.actions.run_shell(
-        outputs = [ctx.outputs.outfile],
-        command = """
-set -euo pipefail
-
-echo "${PATH}${PATTERN:-} $TEAMS" > "$OUTFILE"
-""",
-        env = env,
+    ctx.actions.write(
+        output = ctx.outputs.outfile,
+        content = "%s%s %s\n" % (path, ctx.attr.pattern, " ".join(teams))
     )
 
 codeowners = rule(
