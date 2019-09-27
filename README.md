@@ -46,8 +46,11 @@ codeowners(
                      # //foo/bar:codeowner, this would create an entry for /foo/bar/*.js
 )
 
-# The generate_codeowners rule ties together multiple codeowners rules, and
-# generates the final CODEOWNERS file
+# The generate_codeowners rule ties together multiple codeowners (and generate_codeowners) rules, and
+# generates the final CODEOWNERS file.
+#
+# A generate_codeowners can use another generate_codeowners in the `owners` list,
+# to effectively delegate access to modify the CODOWNERS in a part of the code-tree.
 generate_codeowners(
     name = "generate_codeowners",
     owners = [
