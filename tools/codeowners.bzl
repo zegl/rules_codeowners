@@ -52,7 +52,9 @@ echo "" >> "$OUTFILE"
 
 for file in "$@"
 do
-    cat "$file" >> "$OUTFILE"
+    cat "$file" | \
+        grep -v "#" | \
+        grep -v -e '^$'  >> "$OUTFILE"
 done
         """,
     )
@@ -60,7 +62,7 @@ done
 generate_codeowners = rule(
     implementation = _generate_codeowners_impl,
     attrs = {
-        "owners": attr.label_list(),
+        "owners": attr.label_list(mandatory = True, doc = "A list of codeowners and generate_codeowners. One generate_codeowners can include another generate_codeonwers to effective acheive nested rules."),
     },
     outputs = {
         "outfile": "%{name}.out",
