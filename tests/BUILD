@@ -7,24 +7,47 @@ generate_codeowners(
         "//tests/hey/sub:codeowners",
         "//tests/hey:codeowners",
         "//tests/heyoo:codeowners",
-        ":py_files",
-        ":multi_team",
+        ":single_pattern_single_team",
+        ":single_pattern_multi_team",
+        ":multi_pattern_single_team",
+        ":multi_pattern_multi_team",
+        ":no_pattern_single_team",
+        ":no_pattern_multi_team",
     ],
 )
 
 codeowners(
-    name = "py_files",
-    pattern = "*.py",
-    team = "@the-python-dev",
+    name = "single_pattern_single_team",
+    pattern = "*.a",
+    team = "@the-a-team",
 )
 
 codeowners(
-    name = "multi_team",
-    pattern = "*.html",
-    teams = [
-        "@the-css-team",
-        "@the-html-team",
-    ],
+    name = "single_pattern_multi_team",
+    pattern = "*.b",
+    teams = ["@the-b1-team", "@the-b2-team"],
+)
+
+codeowners(
+    name = "multi_pattern_single_team",
+    patterns = ["*.c1", "c*2"],
+    team = "@the-c-team",
+)
+
+codeowners(
+    name = "multi_pattern_multi_team",
+    patterns = ["*.d1", "d*2"],
+    teams = ["@the-d1-team", "@the-d2-team"],
+)
+
+codeowners(
+    name = "no_pattern_single_team",
+    team = "@the-e-team",
+)
+
+codeowners(
+    name = "no_pattern_multi_team",
+    teams = ["@the-f1-team", "@the-f2-team"],
 )
 
 sh_test(
@@ -87,4 +110,19 @@ failure_testing_test(
 codeowners(
     name = "neither_team_nor_teams_set_rule",
     tags = ["manual"],
+)
+
+
+failure_testing_test(
+    name = "both_pattern_and_patterns",
+    expected = "Both pattern and patterns can not be set at the same time.",
+    target_under_test = ":both_pattern_and_patterns_set_rule",
+)
+
+codeowners(
+    name = "both_pattern_and_patterns_set_rule",
+    tags = ["manual"],
+    team = "@foo",
+    pattern = "foo",
+    patterns = ["bar", "baz"],
 )

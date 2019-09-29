@@ -10,14 +10,25 @@ def _codeowners_impl(ctx):
         fail("Either team or teams must be set.")
     if len(ctx.attr.team) > 0 and len(ctx.attr.teams) > 0:
         fail("Both team and teams can not be set at the same time.")
+    if len(ctx.attr.pattern) > 0 and len(ctx.attr.patterns) > 0:
+        fail("Both pattern and patterns can not be set at the same time.")
 
     teams = ctx.attr.teams
     if len(ctx.attr.team) > 0:
         teams = [ctx.attr.team]
 
+    # Default to empty pattern (matching path only)
+    patterns = [""]
+    if len(ctx.attr.patterns) > 0:
+        patterns = ctx.attr.patterns
+    elif len(ctx.attr.pattern) > 0:
+        patterns = [ctx.attr.pattern]
+
+    content = "\n".join(["%s%s %s" % (path, pattern, " ".join(teams)) for pattern in patterns])
+
     ctx.actions.write(
         output = ctx.outputs.outfile,
-        content = "%s%s %s\n" % (path, ctx.attr.pattern, " ".join(teams))
+        content = content
     )
 
 codeowners = rule(
@@ -25,7 +36,8 @@ codeowners = rule(
     attrs = {
         "team": attr.string(mandatory = False, doc = "The GitHub team that should get ownership of the matching files. One of team and teams must be set."),
         "teams": attr.string_list(mandatory = False, doc = "A list of the GitHub teams that should get ownership of the matching files. One of team and teams must be set."),
-        "pattern": attr.string(mandatory = False),
+        "pattern": attr.string(mandatory = False, doc = "A pattern of files (eg: '*.bzl') that the team(s) should get ownership of. In the generated CODEOWNERS, the path to this target will be prepended to the pattern."),
+        "patterns": attr.string_list(mandatory = False, doc = "A list of patterns, one row will be printed per pattern. See docs of `pattern` for more info."),
     },
     outputs = {
         "outfile": "%{name}.out",
