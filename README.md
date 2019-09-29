@@ -42,8 +42,11 @@ codeowners(
     visibility = ["//visibility:public"],
 
     # Optional rules below
-    pattern = "*.js" # Adds pattern to the end of the path if this rule label is
-                     # //foo/bar:codeowner, this would create an entry for /foo/bar/*.js
+    pattern = "*.js", # Adds pattern to the end of the path if this rule label is
+                      # //foo/bar:codeowner, this would create an entry for /foo/bar/*.js
+
+    patterns = ["*.js", "*.ts"] # Same as pattern, but generates multiple rows, one for each pattern.
+                                # Only one of pattern and patterns can be set at the same time.
 )
 
 # The generate_codeowners rule ties together multiple codeowners (and generate_codeowners) rules, and
