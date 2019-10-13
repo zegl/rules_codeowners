@@ -8,6 +8,8 @@ CODEOWNERS on GitHub is flawed in the way that there can only be one CODEOWNERS 
 
 ## Usage
 
+_See also: [README_DOCS.md](https://github.com/zegl/rules_codeowners/blob/master/README_DOCS.md)_
+
 In the WORKSPACE:
 
 There are currently no releases, use a commit of your choice as the version.
