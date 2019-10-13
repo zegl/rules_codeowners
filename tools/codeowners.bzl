@@ -33,6 +33,12 @@ def _codeowners_impl(ctx):
 
 codeowners = rule(
     implementation = _codeowners_impl,
+    doc = """
+A codeowners-rule represents one or many rows in a CODEOWNERS file.
+
+`team` and `teams` are mutually exclusive.
+`pattern` and `patterns` are mutually exclusive.
+""",
     attrs = {
         "team": attr.string(mandatory = False, doc = "The GitHub team that should get ownership of the matching files. One of team and teams must be set."),
         "teams": attr.string_list(mandatory = False, doc = "A list of the GitHub teams that should get ownership of the matching files. One of team and teams must be set."),
@@ -112,6 +118,9 @@ done
 
 generate_codeowners = rule(
     implementation = _generate_codeowners_impl,
+    doc = """
+Creates a GitHub-compatible CODEOWNERS file based on the `owners`.
+""",
     attrs = {
         "owners": attr.label_list(mandatory = True, doc = "A list of codeowners and generate_codeowners. One generate_codeowners can include another generate_codeonwers to effective acheive nested rules."),
     },

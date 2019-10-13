@@ -9,6 +9,11 @@ codeowners(<a href="#codeowners-name">name</a>, <a href="#codeowners-pattern">pa
 </pre>
 
 
+A codeowners-rule represents one or many rows in a CODEOWNERS file.
+
+`team` and `teams` are mutually exclusive.
+`pattern` and `patterns` are mutually exclusive.
+
 
 **ATTRIBUTES**
 
@@ -30,6 +35,8 @@ codeowners(<a href="#codeowners-name">name</a>, <a href="#codeowners-pattern">pa
 generate_codeowners(<a href="#generate_codeowners-name">name</a>, <a href="#generate_codeowners-owners">owners</a>)
 </pre>
 
+
+Creates a GitHub-compatible CODEOWNERS file based on the `owners`.
 
 
 **ATTRIBUTES**
