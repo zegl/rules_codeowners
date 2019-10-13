@@ -6,4 +6,5 @@ stardoc(
     name = "docs",
     out = "docs.md",
     input = "codeowners.bzl",
+    visibility = ["//:__pkg__"],
 )
