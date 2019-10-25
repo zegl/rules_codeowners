@@ -30,11 +30,11 @@ sh_test(
     name = "stardoc_up_to_date",
     srcs = ["//tools:diff.sh"],
     args = [
-        "$(location //tools:docs.md)",
+        "$(location //docs:docs.md)",
         "$(location README_DOCS.md)",
     ],
     data = [
         "README_DOCS.md",
-        "//tools:docs.md",
+        "//docs:docs.md",
     ],
 )
