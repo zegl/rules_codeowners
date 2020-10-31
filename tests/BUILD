@@ -126,3 +126,34 @@ codeowners(
     pattern = "foo",
     patterns = ["bar", "baz"],
 )
+
+codeowners(
+    name = "multiline_header_owners",
+    team = "@foo",
+    pattern = "*",
+)
+
+generate_codeowners(
+    name = "multiline_header",
+    header_lines = [
+        "The quick brown fox jumps over the lazy dog",
+        "This is another line",
+        "I wonder if this test will pass",
+    ],
+    owners = [
+        ":multiline_header_owners",
+    ],
+)
+
+sh_test(
+    name = "validate_multiple_header_lines",
+    srcs = ["//tools:diff.sh"],
+    args = [
+        "$(location :multiline_header.out)",
+        "$(location :multiline_header_golden)",
+    ],
+    data = [
+        ":multiline_header_golden",
+        ":multiline_header.out",
+    ],
+)
