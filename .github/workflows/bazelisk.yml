@@ -1,0 +1,16 @@
+name: Bazelisk
+on:
+  pull_request: {}
+  push: {}
+
+jobs:
+  bazelisk_jobs:
+    runs-on: ubuntu-latest
+    name: Bazelisk
+    steps:
+    - uses: actions/checkout@v3
+    - uses: bazelbuild/setup-bazelisk@v2
+    - run: USE_BAZEL_VERSION=5.2.0 bazel test //...
+    - run: USE_BAZEL_VERSION=4.0 bazel test //...
+    - run: USE_BAZEL_VERSION=3.0 bazel test //...
+    - run: USE_BAZEL_VERSION=2.0 bazel test //...
