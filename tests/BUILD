@@ -16,6 +16,22 @@ generate_codeowners(
     ],
 )
 
+generate_codeowners(
+    name = "github_codeowners_strict",
+    owners = [
+        "//tests/hey/sub:codeowners",
+        "//tests/hey:codeowners",
+        "//tests/heyoo:codeowners",
+        ":single_pattern_single_team",
+        ":single_pattern_multi_team",
+        ":multi_pattern_single_team",
+        ":multi_pattern_multi_team",
+        ":no_pattern_single_team",
+        ":no_pattern_multi_team",
+    ],
+    validate=True,
+)
+
 codeowners(
     name = "single_pattern_single_team",
     pattern = "*.a",
