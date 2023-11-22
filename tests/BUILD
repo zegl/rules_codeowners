@@ -79,6 +79,19 @@ sh_test(
     ],
 )
 
+sh_test(
+    name = "validate_codeowners_strict",
+    srcs = ["//tools:diff.sh"],
+    args = [
+        "$(location :github_codeowners_strict.out)",
+        "$(location github_codeowners_golden)",
+    ],
+    data = [
+        "github_codeowners_golden",
+        ":github_codeowners_strict.out",
+    ],
+)
+
 generate_codeowners(
     name = "github_codeowners_other_order",
     owners = [
@@ -127,7 +140,6 @@ codeowners(
     name = "neither_team_nor_teams_set_rule",
     tags = ["manual"],
 )
-
 
 failure_testing_test(
     name = "both_pattern_and_patterns",
