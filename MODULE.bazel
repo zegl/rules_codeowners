@@ -1,6 +1,6 @@
 module(
     name = "rules_codeowners",
-    version = "0.1.1",
+    version = "0.2.0",
     repo_name = "rules_codeowners",
     compatibility_level = 1,
 )
