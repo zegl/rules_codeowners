@@ -10,9 +10,15 @@ CODEOWNERS on GitHub is flawed in the way that there can only be one CODEOWNERS 
 
 _See also: [README_DOCS.md](https://github.com/zegl/rules_codeowners/blob/master/README_DOCS.md)_
 
-In the WORKSPACE:
+rules_codeowners is available on the [Bazel Central Registry](https://registry.bazel.build/modules/rules_codeowners):
 
-There are currently no releases, use a commit of your choice as the version.
+**Add this to your `MODULE.bazel`:**
+
+```bzl
+bazel_dep(name = "rules_codeowners", version = "0.2.1")
+```
+
+**... or if you're not using modules, add this to `WORKSPACE`:**
 
 ```bzl
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
@@ -28,7 +34,7 @@ http_archive(
 )
 ```
 
-In BUILD files:
+**In BUILD files:**
 
 ```bzl
 load("@rules_codeowners//tools:codeowners.bzl", "codeowners", "generate_codeowners")
