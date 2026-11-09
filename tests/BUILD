@@ -1,3 +1,4 @@
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load("//tools:codeowners.bzl", "codeowners", "generate_codeowners")
 load("//tools:codeowners_test.bzl", "failure_testing_test")
 

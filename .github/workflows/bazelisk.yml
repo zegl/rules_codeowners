@@ -7,7 +7,7 @@ jobs:
   bazelisk_jobs:
     strategy:
       matrix:
-        version: ["6.4.0"]
+        version: ["9.3.2", "9.2.0", "9.1.1"]
     runs-on: ubuntu-latest
     name: Bazelisk
     steps:
