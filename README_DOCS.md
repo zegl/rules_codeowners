@@ -7,6 +7,8 @@
 ## codeowners
 
 <pre>
+load("@rules_codeowners//tools:codeowners.bzl", "codeowners")
+
 codeowners(<a href="#codeowners-name">name</a>, <a href="#codeowners-pattern">pattern</a>, <a href="#codeowners-patterns">patterns</a>, <a href="#codeowners-team">team</a>, <a href="#codeowners-teams">teams</a>)
 </pre>
 
@@ -32,6 +34,8 @@ A codeowners-rule represents one or many rows in a CODEOWNERS file.
 ## generate_codeowners
 
 <pre>
+load("@rules_codeowners//tools:codeowners.bzl", "generate_codeowners")
+
 generate_codeowners(<a href="#generate_codeowners-name">name</a>, <a href="#generate_codeowners-generated_comment">generated_comment</a>, <a href="#generate_codeowners-owners">owners</a>, <a href="#generate_codeowners-validate">validate</a>)
 </pre>
 
