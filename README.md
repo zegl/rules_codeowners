@@ -15,24 +15,10 @@ rules_codeowners is available on the [Bazel Central Registry](https://registry.b
 **Add this to your `MODULE.bazel`:**
 
 ```bzl
-bazel_dep(name = "rules_codeowners", version = "0.2.1")
+bazel_dep(name = "rules_codeowners", version = "0.3.0")
 ```
 
-**... or if you're not using modules, add this to `WORKSPACE`:**
-
-```bzl
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
-RULES_CODEOWNERS_VERSION = "de6749190dcc5209427799b1e9777f79ab623702"
-RULES_CODEOWNERS_SHA = "9277d41fefe2eded54ab1d3eeaebbef9ad28713291373a635079868980c6ead0"
-
-http_archive(
-    name = "rules_codeowners",
-    strip_prefix = "rules_codeowners-%s" % RULES_CODEOWNERS_VERSION,
-    sha256 = RULES_CODEOWNERS_SHA,
-    url = "https://github.com/zegl/rules_codeowners/archive/%s.zip" % RULES_CODEOWNERS_VERSION,
-)
-```
+Bazel 9 is tested in CI. `WORKSPACE` is not supported. If you need it, use [v0.2.1](https://github.com/zegl/rules_codeowners/tree/v0.2.1#usage).
 
 **In BUILD files:**
 
@@ -81,10 +67,12 @@ bazel build //:generate_codeowners
 ## Making sure that the CODEOWNERS is up to date
 
 It's not possible for Bazel to output files to the workspace, but it _is_ possible to compare the current CODEOWNERS
-with the generated version, to remind you that it's out of date with a `sh_test`.
+with the generated version, to remind you that it's out of date with a `sh_test` (from [`rules_shell`](https://registry.bazel.build/modules/rules_shell)).
 
 
 ```bzl
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
 sh_test(
     name = "validate_codeowoners_up_to_date",
     srcs = ["@rules_codeowners//tools:diff.sh"],

@@ -1,0 +1,33 @@
+# Publish a release to the Bazel Central Registry.
+name: Publish to BCR
+on:
+  workflow_call:
+    inputs:
+      tag_name:
+        required: true
+        type: string
+    secrets:
+      publish_token:
+        required: true
+  # Retry a failed publish from the GitHub UI.
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: git tag being released
+        required: true
+        type: string
+jobs:
+  publish:
+    # https://github.com/bazel-contrib/publish-to-bcr/blob/main/.github/workflows/publish.yaml
+    uses: bazel-contrib/publish-to-bcr/.github/workflows/publish.yaml@v1.6.0
+    with:
+      tag_name: ${{ inputs.tag_name }}
+      registry_fork: zegl/bazel-central-registry
+      # Personal account + personal PAT: open as draft, then mark "Ready for review" to approve.
+      draft: true
+    permissions:
+      attestations: write
+      contents: write
+      id-token: write
+    secrets:
+      publish_token: ${{ secrets.publish_token || secrets.BCR_PUBLISH_TOKEN }}
