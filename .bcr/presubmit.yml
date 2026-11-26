@@ -1,6 +1,6 @@
 matrix:
-  platform: ["debian11", "macos", "ubuntu2204", "windows"]
-  bazel: ["9.*"]
+  platform: ["debian13", "macos", "ubuntu2204", "windows"]
+  bazel: ["8.x", "9.*"]
 tasks:
   verify_targets:
     name: "Build generate_codeowners"
