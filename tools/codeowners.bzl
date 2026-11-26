@@ -1,3 +1,17 @@
+CodeownersInfo = provider(
+    doc = "The CODEOWNERS rows of a codeowners or generate_codeowners target, without the generated header.",
+    fields = {
+        "rows": "File with the rows, and any comments above them.",
+    },
+)
+
+def _comment_lines(comment):
+    if len(comment) == 0:
+        return []
+
+    # A blank line separates the comment from the rows above it
+    return [""] + [("# " + line).rstrip() for line in comment.split("\n")]
+
 def _codeowners_impl(ctx):
     path = "/" + ctx.label.package + "/"
 
@@ -24,12 +38,18 @@ def _codeowners_impl(ctx):
     elif len(ctx.attr.pattern) > 0:
         patterns = [ctx.attr.pattern]
 
-    content = "\n".join(["%s%s %s" % (path, pattern, " ".join(teams)) for pattern in patterns])
+    rows = ["%s%s %s" % (path, pattern, " ".join(teams)) for pattern in patterns]
+    content = "\n".join(_comment_lines(ctx.attr.comment) + rows)
 
     ctx.actions.write(
         output = ctx.outputs.outfile,
-        content = content
+        content = content,
     )
+
+    return [
+        DefaultInfo(files = depset([ctx.outputs.outfile])),
+        CodeownersInfo(rows = ctx.outputs.outfile),
+    ]
 
 codeowners = rule(
     implementation = _codeowners_impl,
@@ -40,6 +60,7 @@ A codeowners-rule represents one or many rows in a CODEOWNERS file.
 `pattern` and `patterns` are mutually exclusive.
 """,
     attrs = {
+        "comment": attr.string(mandatory = False, doc = "A comment to print above the rows, after a blank line. Each line of it becomes a `#` line in the generated CODEOWNERS."),
         "team": attr.string(mandatory = False, doc = "The GitHub team that should get ownership of the matching files. One of team and teams must be set."),
         "teams": attr.string_list(mandatory = False, doc = "A list of the GitHub teams that should get ownership of the matching files. One of team and teams must be set."),
         "pattern": attr.string(mandatory = False, doc = "A pattern of files (eg: '*.bzl') that the team(s) should get ownership of. In the generated CODEOWNERS, the path to this target will be prepended to the pattern."),
@@ -51,7 +72,15 @@ A codeowners-rule represents one or many rows in a CODEOWNERS file.
 )
 
 def _generate_codeowners_impl(ctx):
-    all_ownership_files = [file for owner in ctx.attr.owners for file in owner.files.to_list()]
+    rows = ctx.actions.declare_file(ctx.label.name + ".rows")
+
+    all_ownership_files = []
+    for owner in ctx.attr.owners:
+        # A nested generate_codeowners contributes its rows without its header
+        if CodeownersInfo in owner:
+            all_ownership_files.append(owner[CodeownersInfo].rows)
+        else:
+            all_ownership_files.extend(owner.files.to_list())
 
     args = []
 
@@ -68,11 +97,12 @@ def _generate_codeowners_impl(ctx):
         args.append(must_have_prefix)
 
     ctx.actions.run_shell(
-        outputs = [ctx.outputs.outfile],
+        outputs = [ctx.outputs.outfile, rows],
         inputs = all_ownership_files,
         arguments = args,
         env = {
             "OUTFILE": ctx.outputs.outfile.path,
+            "ROWSFILE": rows.path,
             "VALIDATE": "1" if ctx.attr.validate else "0",
         },
         command = """
@@ -83,31 +113,27 @@ echoerr() {
     exit 1
 }
 
-prevent_malicious_input () {
-    must_have_prefix=$1
-    INPUT=$(cat)
+# Comment lines (starting with #) and blank lines are kept as they are. Other lines containing a # are skipped.
+# With VALIDATE=1, rows that don't match the path of the target that wrote them are skipped, and a file where no row
+# matches fails the build.
+filter_rows () {
+    file=$1
+    must_have_prefix=$2
 
-    # Skip validation
-    if [ "$VALIDATE" -eq 0 ]; then
-        echo "$INPUT"
-        return 0
-    fi
-
-    set +e
-    echo -n "$INPUT" | grep -E "${must_have_prefix}" || echoerr "Potentially malicious input detected, path did not match '${must_have_prefix}' (input = '${INPUT}')"
-    set -e
+    awk -v prefix="$must_have_prefix" -v validate="$VALIDATE" '
+        /^#/ || /^$/ { print; next }
+        /#/ { next }
+        {
+            if (validate == 1 && $0 !~ prefix) { next }
+            matched++
+            print
+        }
+        END { if (validate == 1 && matched == 0) { exit 1 } }
+    ' "$file" || echoerr "Potentially malicious input detected, path did not match '${must_have_prefix}' (file = '${file}')"
 }
 
-skip_comments () {
-    grep -v "#"
-}
-
-skip_empty_rows () {
-    grep -v -E '^$'
-}
-
-echo "_GENERATED_COMMENT_" >> "$OUTFILE"
-echo "" >> "$OUTFILE"
+body=$(mktemp)
+trap 'rm -f "$body"' EXIT
 
 while [ "$#" -gt 0 ]; do
     file=$1
@@ -115,13 +141,23 @@ while [ "$#" -gt 0 ]; do
     shift
     shift
 
-    cat "$file" | \
-        skip_comments  | \
-        skip_empty_rows | \
-        prevent_malicious_input "$must_have_prefix" >> "$OUTFILE"
+    filter_rows "$file" "$must_have_prefix" >> "$body"
 done
+
+# Squeeze runs of blank lines into one and drop trailing ones. A leading one stays, to separate the rows from those
+# above them when this generate_codeowners is nested in another.
+awk 'NF == 0 { blank = 1; next } { if (blank) { print "" } blank = 0; print }' "$body" > "$ROWSFILE"
+
+echo "_GENERATED_COMMENT_" > "$OUTFILE"
+echo "" >> "$OUTFILE"
+awk 'NF == 0 && !printed { next } { printed = 1; print }' "$ROWSFILE" >> "$OUTFILE"
         """.replace("_GENERATED_COMMENT_", ctx.attr.generated_comment),
     )
+
+    return [
+        DefaultInfo(files = depset([ctx.outputs.outfile])),
+        CodeownersInfo(rows = rows),
+    ]
 
 generate_codeowners = rule(
     implementation = _generate_codeowners_impl,
@@ -134,7 +170,7 @@ Creates a GitHub-compatible CODEOWNERS file based on the `owners`.
             default = "# This file was generated by rules_codeowners / Bazel. Don't edit it directly",
         ),
         "owners": attr.label_list(mandatory = True, doc = "A list of codeowners and generate_codeowners. One generate_codeowners can include another generate_codeowners to achieve nested rules."),
-        "validate": attr.bool(default=False, doc = "Set to True to enable strict validation of codeowners values. Disabled by default.", mandatory=False),
+        "validate": attr.bool(default = False, doc = "Set to True to enable strict validation of codeowners values. Disabled by default.", mandatory = False),
     },
     outputs = {
         "outfile": "%{name}.out",
