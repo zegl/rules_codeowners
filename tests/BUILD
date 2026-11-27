@@ -1,3 +1,4 @@
+load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load("//tools:codeowners.bzl", "codeowners", "generate_codeowners")
 load("//tools:codeowners_test.bzl", "failure_testing_test")
@@ -217,4 +218,38 @@ sh_test(
         "github_codeowners_shell_metachars_comment_golden",
         ":github_codeowners_shell_metachars_comment.out",
     ],
+)
+
+# Only codeowners and generate_codeowners can be owners, their rows are known when the build is analysed
+failure_testing_test(
+    name = "plain_file_owner",
+    expected = "does not have mandatory providers: 'CodeownersInfo'",
+    target_under_test = ":plain_file_owner_rule",
+)
+
+generate_codeowners(
+    name = "plain_file_owner_rule",
+    owners = [":plain_file"],
+    tags = ["manual"],
+)
+
+write_file(
+    name = "plain_file",
+    out = "plain_file.txt",
+    content = ["/tests/ @the-a-team"],
+    tags = ["manual"],
+)
+
+# A "#" would turn the rest of the row into a comment
+failure_testing_test(
+    name = "hash_in_pattern",
+    expected = "pattern can not contain a # or a newline",
+    target_under_test = ":hash_in_pattern_rule",
+)
+
+codeowners(
+    name = "hash_in_pattern_rule",
+    pattern = "#notes.md",
+    tags = ["manual"],
+    team = "@the-a-team",
 )

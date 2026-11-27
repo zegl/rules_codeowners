@@ -1,8 +1,11 @@
 CodeownersInfo = provider(
     doc = "The CODEOWNERS rows of a codeowners or generate_codeowners target, without the generated header.",
     fields = {
-        "rows": "File with the rows, and any comments above them.",
-        "include_global_owners": "Whether the global_owners of a generate_codeowners should be added to the rows.",
+        "entries": """The rows, and the comment and blank lines above them, in order. Each is a struct with:
+`text`: the comment or blank line, or None for a row.
+`path`: the path of the row, or None for a comment or blank line.
+`owners`: the owners of the row.
+`include_global_owners`: whether the global_owners of a generate_codeowners should be added to the row.""",
     },
 )
 
@@ -14,12 +17,28 @@ _GenerateCodeownersInfo = provider(
     },
 )
 
+def _line(text):
+    return struct(text = text, path = None, owners = [], include_global_owners = False)
+
+def _row(path, owners, include_global_owners):
+    return struct(text = None, path = path, owners = owners, include_global_owners = include_global_owners)
+
+def _entry_text(entry):
+    if entry.text != None:
+        return entry.text
+    return " ".join([entry.path] + entry.owners)
+
 def _comment_lines(comment):
     if len(comment) == 0:
         return []
 
     # A blank line separates the comment from the rows above it
     return [""] + [("# " + line).rstrip() for line in comment.split("\n")]
+
+def _check_value(label, attr, value):
+    # A "#" starts a comment, and a newline starts a new row, so either would change the meaning of the row
+    if "#" in value or "\n" in value:
+        fail("%s: %s can not contain a # or a newline, got %s" % (label, attr, repr(value)))
 
 def _codeowners_impl(ctx):
     path = "/" + ctx.label.package + "/"
@@ -54,21 +73,25 @@ def _codeowners_impl(ctx):
     elif len(ctx.attr.pattern) > 0:
         patterns = [ctx.attr.pattern]
 
-    rows = [" ".join([path + pattern] + teams) for pattern in patterns]
-    content = "\n".join(_comment_lines(ctx.attr.comment) + rows)
+    for team in teams:
+        _check_value(ctx.label, "team", team)
+    for pattern in patterns:
+        _check_value(ctx.label, "pattern", pattern)
+
+    # Adding owners to an unowned row would make it owned
+    include_global_owners = ctx.attr.include_global_owners and not ctx.attr.unowned
+
+    entries = [_line(line) for line in _comment_lines(ctx.attr.comment)]
+    entries.extend([_row(path + pattern, teams, include_global_owners) for pattern in patterns])
 
     ctx.actions.write(
         output = ctx.outputs.outfile,
-        content = content,
+        content = "\n".join([_entry_text(entry) for entry in entries]),
     )
 
     return [
         DefaultInfo(files = depset([ctx.outputs.outfile])),
-        CodeownersInfo(
-            rows = ctx.outputs.outfile,
-            # Adding owners to an unowned row would make it owned
-            include_global_owners = ctx.attr.include_global_owners and not ctx.attr.unowned,
-        ),
+        CodeownersInfo(entries = entries),
     ]
 
 codeowners = rule(
@@ -97,157 +120,73 @@ or `unowned = True`.
     },
 )
 
-def _generate_codeowners_impl(ctx):
-    rows = ctx.actions.declare_file(ctx.label.name + ".rows")
+def _row_owners(row, global_owners, sort_owners):
+    owners = list(row.owners)
+    if row.include_global_owners:
+        for owner in global_owners:
+            if owner not in owners:
+                owners.append(owner)
+    if sort_owners:
+        # Starlark compares strings by their bytes
+        owners = sorted({owner: None for owner in owners}.keys())
+    return owners
 
-    # Pairs of (file, whether the global owners should be added to its rows)
-    all_ownership_files = []
+def _render(entries):
+    """The lines of the entries, with runs of blank lines squeezed into one, and no leading or trailing ones."""
+    lines = []
+    blank = False
+    for entry in entries:
+        text = _entry_text(entry)
+        if text.strip() == "":
+            blank = True
+            continue
+        if blank and lines:
+            lines.append("")
+        blank = False
+        lines.append(text)
+    return lines
+
+def _generate_codeowners_impl(ctx):
     for owner in ctx.attr.owners:
         if _GenerateCodeownersInfo in owner:
-            # Nested generate_codeowners only contribute their rows as text, so it's not possible to know which
-            # of them opted out of the global owners.
             if len(ctx.attr.global_owners) > 0:
                 fail("global_owners can not be combined with nested generate_codeowners, %s is a generate_codeowners." % owner.label)
             if len(owner[_GenerateCodeownersInfo].global_owners) > 0:
                 fail("A generate_codeowners with global_owners can not be nested in another generate_codeowners, %s sets global_owners." % owner.label)
 
-        # A nested generate_codeowners contributes its rows without its header
-        if CodeownersInfo in owner:
-            info = owner[CodeownersInfo]
-            all_ownership_files.append((info.rows, info.include_global_owners))
-        else:
-            all_ownership_files.extend([(file, True) for file in owner.files.to_list()])
+    for owner in ctx.attr.global_owners:
+        _check_value(ctx.label, "global_owners", owner)
 
     global_owners = ctx.attr.global_owners
     if ctx.attr.sort_owners:
         # The "*" row is written as it is, so sort it here
         global_owners = sorted({owner: None for owner in global_owners}.keys())
 
-    args = []
+    entries = []
+    for owner in ctx.attr.owners:
+        for entry in owner[CodeownersInfo].entries:
+            if entry.text == None:
+                entry = _row(entry.path, _row_owners(entry, global_owners, ctx.attr.sort_owners), entry.include_global_owners)
+            entries.append(entry)
 
-    for file, include_global_owners in all_ownership_files:
-        args.append(file.path)
+    # The global owners own everything that no other row matches. This row must be first, as the last matching row wins.
+    # It is not part of the entries, so it's left out when this generate_codeowners is nested in another.
+    lines = _render(entries)
+    if len(global_owners) > 0:
+        lines = ["* " + " ".join(global_owners)] + lines
 
-        # Use the path to the target, and validate that all rows in the output matches
-        # this path.
-        must_have_prefix = file.path[len(file.root.path):-len(file.basename)]
+    content = ctx.attr.generated_comment + "\n\n"
+    if lines:
+        content += "\n".join(lines) + "\n"
 
-        if must_have_prefix == "/":
-            must_have_prefix = ""
-
-        args.append(must_have_prefix)
-        args.append("1" if include_global_owners else "0")
-
-    ctx.actions.run_shell(
-        outputs = [ctx.outputs.outfile, rows],
-        inputs = [file for file, _ in all_ownership_files],
-        arguments = args,
-        env = {
-            "OUTFILE": ctx.outputs.outfile.path,
-            "ROWSFILE": rows.path,
-            "VALIDATE": "1" if ctx.attr.validate else "0",
-            # Passed as data, never spliced into the script, so the shell
-            # does not evaluate backticks, $(...), quotes etc. in it.
-            "GENERATED_COMMENT": ctx.attr.generated_comment,
-            "GLOBAL_OWNERS": " ".join(global_owners),
-            "SORT_OWNERS": "1" if ctx.attr.sort_owners else "0",
-            # Owners are sorted by their bytes, not by the collation of the host's locale
-            "LC_ALL": "C",
-        },
-        command = """
-set -euo pipefail
-
-echoerr() {
-    echo "$@" 1>&2;
-    exit 1
-}
-
-# Comment lines (starting with #) and blank lines are kept as they are. Other lines containing a # are skipped.
-# With VALIDATE=1, rows that don't match the path of the target that wrote them are skipped, and a file where no row
-# matches fails the build.
-# With add_global=1, the GLOBAL_OWNERS that are not already owners of a row are added to the end of it.
-# With SORT_OWNERS=1, the owners of each row are sorted, and duplicates are removed.
-filter_rows () {
-    file=$1
-    must_have_prefix=$2
-    add_global=$3
-
-    awk -v prefix="$must_have_prefix" -v validate="$VALIDATE" -v add_global="$add_global" -v global="$GLOBAL_OWNERS" -v sort="$SORT_OWNERS" '
-        /^#/ || /^$/ { print; next }
-        /#/ { next }
-        {
-            # The prefix is compared as a literal string, at the start of the row
-            if (validate == 1 && prefix != "" && index($0, prefix) != 1) { next }
-            matched++
-            if (add_global != 1 && sort != 1) { print; next }
-
-            # The path is the first field, and the fields after it that an escaped space ("\\ ") split it into
-            k = 1
-            while (k < NF && $k ~ /\\\\$/) { k++ }
-            row = $1
-            for (i = 2; i <= k; i++) { row = row " " $i }
-            n = 0
-            for (i = k + 1; i <= NF; i++) { owners[++n] = $i }
-
-            if (add_global == 1) {
-                g = split(global, globals, " ")
-                for (i = 1; i <= g; i++) {
-                    found = 0
-                    for (j = 1; j <= n; j++) {
-                        if (owners[j] == globals[i]) { found = 1; break }
-                    }
-                    if (!found) { owners[++n] = globals[i] }
-                }
-            }
-
-            if (sort == 1) {
-                # Insertion sort, the rows are short. Appending "" compares the owners as strings.
-                for (i = 2; i <= n; i++) {
-                    owner = owners[i]
-                    for (j = i - 1; j >= 1 && (owners[j] "") > (owner ""); j--) { owners[j + 1] = owners[j] }
-                    owners[j + 1] = owner
-                }
-            }
-
-            for (i = 1; i <= n; i++) {
-                if (sort == 1 && i > 1 && owners[i] == owners[i - 1]) { continue }
-                row = row " " owners[i]
-            }
-            print row
-        }
-        END { if (validate == 1 && matched == 0) { exit 1 } }
-    ' "$file" || echoerr "Potentially malicious input detected, path did not match '${must_have_prefix}' (file = '${file}')"
-}
-
-body=$(mktemp)
-trap 'rm -f "$body"' EXIT
-
-# The global owners own everything that no other row matches. This row must be first, as the last matching row wins.
-if [ -n "$GLOBAL_OWNERS" ]; then
-    printf '* %s\n' "$GLOBAL_OWNERS" >> "$body"
-fi
-
-while [ "$#" -gt 0 ]; do
-    file=$1
-    must_have_prefix=$2
-    add_global=$3
-    shift 3
-
-    filter_rows "$file" "$must_have_prefix" "$add_global" >> "$body"
-done
-
-# Squeeze runs of blank lines into one and drop trailing ones. A leading one stays, to separate the rows from those
-# above them when this generate_codeowners is nested in another.
-awk 'NF == 0 { blank = 1; next } { if (blank) { print "" } blank = 0; print }' "$body" > "$ROWSFILE"
-
-printf '%s\n\n' "$GENERATED_COMMENT" > "$OUTFILE"
-awk 'NF == 0 && !printed { next } { printed = 1; print }' "$ROWSFILE" >> "$OUTFILE"
-        """,
+    ctx.actions.write(
+        output = ctx.outputs.outfile,
+        content = content,
     )
 
     return [
         DefaultInfo(files = depset([ctx.outputs.outfile])),
-        CodeownersInfo(rows = rows, include_global_owners = True),
+        CodeownersInfo(entries = entries),
         _GenerateCodeownersInfo(global_owners = ctx.attr.global_owners),
     ]
 
@@ -265,9 +204,9 @@ all other rows (unless the `codeowners` sets `include_global_owners = False`, or
             doc = "A comment to insert at the top of the generated file",
             default = "# This file was generated by rules_codeowners / Bazel. Don't edit it directly",
         ),
-        "owners": attr.label_list(mandatory = True, doc = "A list of codeowners and generate_codeowners. One generate_codeowners can include another generate_codeowners to achieve nested rules."),
+        "owners": attr.label_list(mandatory = True, providers = [CodeownersInfo], doc = "A list of codeowners and generate_codeowners. One generate_codeowners can include another generate_codeowners to achieve nested rules."),
         "global_owners": attr.string_list(mandatory = False, doc = "A list of GitHub teams that own all files. They are written as a `*` row first in the file, and added to the rows of all `codeowners`, so that they can approve changes everywhere. Can not be combined with nested generate_codeowners."),
-        "validate": attr.bool(default = False, doc = "Set to True to enable strict validation of codeowners values. Disabled by default.", mandatory = False),
+        "validate": attr.bool(default = False, doc = "Has no effect. The rows of a `codeowners` always start with the path of its package.", mandatory = False),
         "sort_owners": attr.bool(default = False, mandatory = False, doc = "Set to True to sort the owners of each row (by their bytes, after the `global_owners` are added), and remove duplicate owners. This applies to the rows of nested generate_codeowners too."),
     },
     outputs = {

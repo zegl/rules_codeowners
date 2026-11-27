@@ -62,7 +62,7 @@ all other rows (unless the `codeowners` sets `include_global_owners = False`, or
 | <a id="generate_codeowners-global_owners"></a>global_owners |  A list of GitHub teams that own all files. They are written as a `*` row first in the file, and added to the rows of all `codeowners`, so that they can approve changes everywhere. Can not be combined with nested generate_codeowners.   | List of strings | optional |  `[]`  |
 | <a id="generate_codeowners-owners"></a>owners |  A list of codeowners and generate_codeowners. One generate_codeowners can include another generate_codeowners to achieve nested rules.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | required |  |
 | <a id="generate_codeowners-sort_owners"></a>sort_owners |  Set to True to sort the owners of each row (by their bytes, after the `global_owners` are added), and remove duplicate owners. This applies to the rows of nested generate_codeowners too.   | Boolean | optional |  `False`  |
-| <a id="generate_codeowners-validate"></a>validate |  Set to True to enable strict validation of codeowners values. Disabled by default.   | Boolean | optional |  `False`  |
+| <a id="generate_codeowners-validate"></a>validate |  Has no effect. The rows of a `codeowners` always start with the path of its package.   | Boolean | optional |  `False`  |
 
 
 <a id="CodeownersInfo"></a>
@@ -72,7 +72,7 @@ all other rows (unless the `codeowners` sets `include_global_owners = False`, or
 <pre>
 load("@rules_codeowners//tools:codeowners.bzl", "CodeownersInfo")
 
-CodeownersInfo(<a href="#CodeownersInfo-rows">rows</a>, <a href="#CodeownersInfo-include_global_owners">include_global_owners</a>)
+CodeownersInfo(<a href="#CodeownersInfo-entries">entries</a>)
 </pre>
 
 The CODEOWNERS rows of a codeowners or generate_codeowners target, without the generated header.
@@ -81,7 +81,6 @@ The CODEOWNERS rows of a codeowners or generate_codeowners target, without the g
 
 | Name  | Description |
 | :------------- | :------------- |
-| <a id="CodeownersInfo-rows"></a>rows |  File with the rows, and any comments above them.    |
-| <a id="CodeownersInfo-include_global_owners"></a>include_global_owners |  Whether the global_owners of a generate_codeowners should be added to the rows.    |
+| <a id="CodeownersInfo-entries"></a>entries |  The rows, and the comment and blank lines above them, in order. Each is a struct with: `text`: the comment or blank line, or None for a row. `path`: the path of the row, or None for a comment or blank line. `owners`: the owners of the row. `include_global_owners`: whether the global_owners of a generate_codeowners should be added to the row.    |
 
 
