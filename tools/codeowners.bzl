@@ -16,6 +16,7 @@ _GenerateCodeownersInfo = provider(
     doc = "Marks a generate_codeowners target.",
     fields = {
         "global_owners": "The global_owners of the generate_codeowners.",
+        "fallback_owners": "The fallback_owners of the generate_codeowners.",
     },
 )
 
@@ -169,16 +170,15 @@ def _generate_codeowners_impl(ctx):
         # The rows of a nested generate_codeowners get the global owners of the one that includes it, as their own
         # include_global_owners says. Its own "*" row would replace the ownership of all rows above it.
         if _GenerateCodeownersInfo in owner:
-            if len(owner[_GenerateCodeownersInfo].global_owners) > 0:
-                fail("A generate_codeowners with global_owners can not be nested in another generate_codeowners, %s sets global_owners." % owner.label)
+            for attr in ["global_owners", "fallback_owners"]:
+                if len(getattr(owner[_GenerateCodeownersInfo], attr)) > 0:
+                    fail("A generate_codeowners with %s can not be nested in another generate_codeowners, %s sets %s." % (attr, owner.label, attr))
 
-    for owner in ctx.attr.global_owners:
-        _check_value(ctx.label, "global_owners", owner)
+    for attr in ["global_owners", "fallback_owners"]:
+        for owner in getattr(ctx.attr, attr):
+            _check_value(ctx.label, attr, owner)
 
     global_owners = ctx.attr.global_owners
-    if ctx.attr.sort_owners:
-        # The "*" row is written as it is, so sort it here
-        global_owners = sorted({owner: None for owner in global_owners}.keys())
 
     entries = []
     for owner in ctx.attr.owners:
@@ -189,11 +189,13 @@ def _generate_codeowners_impl(ctx):
                 entry = _with_owners(entry, _row_owners(entry, global_owners, ctx.attr.sort_owners))
             entries.append(entry)
 
-    # The global owners own everything that no other row matches. This row must be first, as the last matching row wins.
-    # It is not part of the entries, so it's left out when this generate_codeowners is nested in another.
+    # The fallback and global owners own everything that no other row matches. This row must be first, as the last
+    # matching row wins. It is not part of the entries, so it's left out when this generate_codeowners is nested in
+    # another.
     lines = _render(entries)
-    if len(global_owners) > 0:
-        lines = ["* " + " ".join(global_owners)] + lines
+    if len(ctx.attr.fallback_owners) > 0 or len(global_owners) > 0:
+        fallback = _row("*", ctx.attr.fallback_owners, True, str(ctx.label), "")
+        lines = [_entry_text(_with_owners(fallback, _row_owners(fallback, global_owners, ctx.attr.sort_owners)))] + lines
 
     content = ctx.attr.generated_comment + "\n\n"
     if lines:
@@ -207,7 +209,7 @@ def _generate_codeowners_impl(ctx):
     return [
         DefaultInfo(files = depset([ctx.outputs.outfile])),
         CodeownersInfo(entries = entries),
-        _GenerateCodeownersInfo(global_owners = ctx.attr.global_owners),
+        _GenerateCodeownersInfo(global_owners = ctx.attr.global_owners, fallback_owners = ctx.attr.fallback_owners),
     ]
 
 generate_codeowners = rule(
@@ -218,6 +220,10 @@ Creates a GitHub-compatible CODEOWNERS file based on the `owners`.
 When `global_owners` is set, a `*` row with the global owners is written first, and the global owners are added to
 all other rows (unless the `codeowners` sets `include_global_owners = False`, or `unowned = True`). This includes the
 rows of nested `generate_codeowners`, which can not set `global_owners` themselves.
+
+When `fallback_owners` is set, they own the `*` row together with the global owners, but are not added to the other
+rows. Use it for the owners of files that no other row matches, instead of a `codeowners` with `pattern = "*"`, which
+would come after the `*` row of the global owners and replace it.
 """,
     attrs = {
         "generated_comment": attr.string(
@@ -227,7 +233,8 @@ rows of nested `generate_codeowners`, which can not set `global_owners` themselv
         "owners": attr.label_list(mandatory = True, providers = [CodeownersInfo], doc = "A list of codeowners and generate_codeowners. One generate_codeowners can include another generate_codeowners to achieve nested rules."),
         "global_owners": attr.string_list(mandatory = False, doc = "A list of GitHub teams that own all files. They are written as a `*` row first in the file, and added to the rows of all `codeowners`, so that they can approve changes everywhere, including the rows of nested generate_codeowners. Can not be set on a generate_codeowners that is nested in another."),
         "validate": attr.bool(default = False, doc = "Set to True to fail the build when a row is outside the package of its `codeowners`, which a pattern starting with `//` allows. This applies to the rows of nested generate_codeowners too.", mandatory = False),
-        "sort_owners": attr.bool(default = False, mandatory = False, doc = "Set to True to sort the owners of each row (by their bytes, after the `global_owners` are added), and remove duplicate owners. This applies to the rows of nested generate_codeowners too."),
+        "fallback_owners": attr.string_list(mandatory = False, doc = "A list of GitHub teams that own the files that no other row matches. They are written in the `*` row first in the file, followed by the `global_owners`, but not added to any other row. Can not be set on a generate_codeowners that is nested in another."),
+        "sort_owners": attr.bool(default = False, mandatory = False, doc = "Set to True to sort the owners of each row (by their bytes, after the `global_owners` are added), and remove duplicate owners. The `*` row is sorted too. This applies to the rows of nested generate_codeowners too."),
     },
     outputs = {
         "outfile": "%{name}.out",

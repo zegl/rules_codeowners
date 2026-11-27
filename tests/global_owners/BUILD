@@ -147,6 +147,69 @@ generate_codeowners(
     tags = ["manual"],
 )
 
+# The fallback owners join the global owners in the "*" row only
+generate_codeowners(
+    name = "github_codeowners_fallback",
+    fallback_owners = ["@fallback-b", "@global-2", "@fallback-a"],
+    global_owners = ["@global-1", "@global-2"],
+    owners = [
+        ":single_team",
+        ":nested_without_global_owners",
+    ],
+)
+
+sh_test(
+    name = "validate_codeowners_fallback",
+    srcs = ["//tools:diff.sh"],
+    args = [
+        "$(location :github_codeowners_fallback.out)",
+        "$(location github_codeowners_fallback_golden)",
+    ],
+    data = [
+        "github_codeowners_fallback_golden",
+        ":github_codeowners_fallback.out",
+    ],
+)
+
+# Without global owners, the fallback owners are the only owners of the "*" row
+generate_codeowners(
+    name = "github_codeowners_only_fallback",
+    fallback_owners = ["@fallback-b", "@fallback-a"],
+    owners = [":single_team"],
+)
+
+sh_test(
+    name = "validate_codeowners_only_fallback",
+    srcs = ["//tools:diff.sh"],
+    args = [
+        "$(location :github_codeowners_only_fallback.out)",
+        "$(location github_codeowners_only_fallback_golden)",
+    ],
+    data = [
+        "github_codeowners_only_fallback_golden",
+        ":github_codeowners_only_fallback.out",
+    ],
+)
+
+failure_testing_test(
+    name = "nested_with_fallback_owners",
+    expected = "A generate_codeowners with fallback_owners can not be nested in another generate_codeowners",
+    target_under_test = ":nested_with_fallback_owners_rule",
+)
+
+generate_codeowners(
+    name = "nested_with_fallback_owners_rule",
+    owners = [":nested_fallback_owners"],
+    tags = ["manual"],
+)
+
+generate_codeowners(
+    name = "nested_fallback_owners",
+    fallback_owners = ["@fallback"],
+    owners = [":single_team"],
+    tags = ["manual"],
+)
+
 failure_testing_test(
     name = "unowned_and_not_include_global_owners",
     expected = "include_global_owners has no effect when unowned = True",

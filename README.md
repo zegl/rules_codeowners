@@ -68,6 +68,11 @@ generate_codeowners(
     # of nested generate_codeowners. A nested generate_codeowners can not set global_owners.
     global_owners = ["@org/global-approvers"],
 
+    # Optional: teams that own the files that no other row matches. They join the global_owners in the "*" row, but
+    # are not added to the other rows. Use it instead of a codeowners with pattern = "*", which would come after the
+    # "*" row of the global_owners and replace it. A nested generate_codeowners can not set fallback_owners.
+    fallback_owners = ["@org/maintainers"],
+
     # Optional: sort the owners of each row, and remove duplicates.
     sort_owners = True,
 
