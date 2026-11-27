@@ -18,7 +18,7 @@ rules_codeowners is available on the [Bazel Central Registry](https://registry.b
 bazel_dep(name = "rules_codeowners", version = "0.3.2")
 ```
 
-Bazel 9 is tested in CI. `WORKSPACE` is not supported. If you need it, use [v0.2.1](https://github.com/zegl/rules_codeowners/tree/v0.2.1#usage).
+Bazel 8 and 9 are tested in CI. `WORKSPACE` is not supported. If you need it, use [v0.2.1](https://github.com/zegl/rules_codeowners/tree/v0.2.1#usage).
 
 **In BUILD files:**
 
