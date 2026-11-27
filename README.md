@@ -40,6 +40,8 @@ codeowners(
     # Optional rules below
     pattern = "*.js", # Adds pattern to the end of the path if this rule label is
                       # //foo/bar:codeowner, this would create an entry for /foo/bar/*.js
+                      # A pattern starting with // is anchored at the root of the repository instead,
+                      # "//docs/bar/" creates an entry for /docs/bar/.
 
     patterns = ["*.js", "*.ts"], # Same as pattern, but generates multiple rows, one for each pattern.
                                  # Only one of pattern and patterns can be set at the same time.
@@ -68,6 +70,9 @@ generate_codeowners(
 
     # Optional: sort the owners of each row, and remove duplicates.
     sort_owners = True,
+
+    # Optional: fail the build when a codeowners writes a row outside its package, with a // pattern.
+    validate = True,
 )
 ```
 

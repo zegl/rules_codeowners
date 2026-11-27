@@ -5,7 +5,9 @@ CodeownersInfo = provider(
 `text`: the comment or blank line, or None for a row.
 `path`: the path of the row, or None for a comment or blank line.
 `owners`: the owners of the row.
-`include_global_owners`: whether the global_owners of a generate_codeowners should be added to the row.""",
+`include_global_owners`: whether the global_owners of a generate_codeowners should be added to the row.
+`label`: the label of the codeowners that wrote the row.
+`package_path`: the path of that codeowners' package, which the row is expected to start with.""",
     },
 )
 
@@ -18,10 +20,20 @@ _GenerateCodeownersInfo = provider(
 )
 
 def _line(text):
-    return struct(text = text, path = None, owners = [], include_global_owners = False)
+    return struct(text = text, path = None, owners = [], include_global_owners = False, label = None, package_path = None)
 
-def _row(path, owners, include_global_owners):
-    return struct(text = None, path = path, owners = owners, include_global_owners = include_global_owners)
+def _row(path, owners, include_global_owners, label, package_path):
+    return struct(
+        text = None,
+        path = path,
+        owners = owners,
+        include_global_owners = include_global_owners,
+        label = label,
+        package_path = package_path,
+    )
+
+def _with_owners(row, owners):
+    return _row(row.path, owners, row.include_global_owners, row.label, row.package_path)
 
 def _entry_text(entry):
     if entry.text != None:
@@ -82,7 +94,13 @@ def _codeowners_impl(ctx):
     include_global_owners = ctx.attr.include_global_owners and not ctx.attr.unowned
 
     entries = [_line(line) for line in _comment_lines(ctx.attr.comment)]
-    entries.extend([_row(path + pattern, teams, include_global_owners) for pattern in patterns])
+    for pattern in patterns:
+        # A pattern starting with // is anchored at the root of the repository, instead of at this package
+        if pattern.startswith("//"):
+            row_path = pattern[1:]
+        else:
+            row_path = path + pattern
+        entries.append(_row(row_path, teams, include_global_owners, str(ctx.label), path))
 
     ctx.actions.write(
         output = ctx.outputs.outfile,
@@ -112,7 +130,7 @@ or `unowned = True`.
         "teams": attr.string_list(mandatory = False, doc = "A list of the GitHub teams that should get ownership of the matching files. One of team, teams and unowned must be set."),
         "unowned": attr.bool(default = False, mandatory = False, doc = "Set to True to explicitly mark the matching files as having no owner. The row is written without any teams, which overrides ownership from earlier rows. Can not be combined with team or teams."),
         "include_global_owners": attr.bool(default = True, mandatory = False, doc = "Set to False to not add the `global_owners` of the `generate_codeowners` to these rows."),
-        "pattern": attr.string(mandatory = False, doc = "A pattern of files (eg: '*.bzl') that the team(s) should get ownership of. In the generated CODEOWNERS, the path to this target will be prepended to the pattern."),
+        "pattern": attr.string(mandatory = False, doc = "A pattern of files (eg: '*.bzl') that the team(s) should get ownership of. In the generated CODEOWNERS, the path to this target will be prepended to the pattern. A pattern starting with `//` is anchored at the root of the repository instead, eg `//docs/foo/` becomes `/docs/foo/`, so a package can own files outside of it."),
         "patterns": attr.string_list(mandatory = False, doc = "A list of patterns, one row will be printed per pattern. See docs of `pattern` for more info."),
     },
     outputs = {
@@ -166,7 +184,9 @@ def _generate_codeowners_impl(ctx):
     for owner in ctx.attr.owners:
         for entry in owner[CodeownersInfo].entries:
             if entry.text == None:
-                entry = _row(entry.path, _row_owners(entry, global_owners, ctx.attr.sort_owners), entry.include_global_owners)
+                if ctx.attr.validate and not entry.path.startswith(entry.package_path):
+                    fail("%s writes the row %s, which is outside its package %s. validate = True only allows rows in the package of their codeowners." % (entry.label, entry.path, entry.package_path))
+                entry = _with_owners(entry, _row_owners(entry, global_owners, ctx.attr.sort_owners))
             entries.append(entry)
 
     # The global owners own everything that no other row matches. This row must be first, as the last matching row wins.
@@ -206,7 +226,7 @@ rows of nested `generate_codeowners`, which can not set `global_owners` themselv
         ),
         "owners": attr.label_list(mandatory = True, providers = [CodeownersInfo], doc = "A list of codeowners and generate_codeowners. One generate_codeowners can include another generate_codeowners to achieve nested rules."),
         "global_owners": attr.string_list(mandatory = False, doc = "A list of GitHub teams that own all files. They are written as a `*` row first in the file, and added to the rows of all `codeowners`, so that they can approve changes everywhere, including the rows of nested generate_codeowners. Can not be set on a generate_codeowners that is nested in another."),
-        "validate": attr.bool(default = False, doc = "Has no effect. The rows of a `codeowners` always start with the path of its package.", mandatory = False),
+        "validate": attr.bool(default = False, doc = "Set to True to fail the build when a row is outside the package of its `codeowners`, which a pattern starting with `//` allows. This applies to the rows of nested generate_codeowners too.", mandatory = False),
         "sort_owners": attr.bool(default = False, mandatory = False, doc = "Set to True to sort the owners of each row (by their bytes, after the `global_owners` are added), and remove duplicate owners. This applies to the rows of nested generate_codeowners too."),
     },
     outputs = {
