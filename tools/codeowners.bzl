@@ -53,6 +53,23 @@ def _check_value(label, attr, value):
     if "#" in value or "\n" in value:
         fail("%s: %s can not contain a # or a newline, got %s" % (label, attr, repr(value)))
 
+def _check_owner(label, attr, owner):
+    _check_value(label, attr, owner)
+
+    # GitHub owners are @user, @org/team or an email address. A space would split the owner into two.
+    if "@" not in owner or " " in owner or "\t" in owner:
+        fail("%s: %s must be a GitHub user or team starting with @, or an email address, got %s" % (label, attr, repr(owner)))
+
+def _check_allowed_org(label, owner, allowed_orgs):
+    if not owner.startswith("@") or "/" not in owner:
+        return
+    org = owner[1:].split("/")[0]
+
+    # GitHub org names are case insensitive
+    if org.lower() not in allowed_orgs:
+        fail(("%s: %s is a team outside the allowed_orgs %s. GitHub only resolves a CODEOWNERS team in the organization " +
+              "that owns the repository, and ignores any other, so the team could not approve changes.") % (label, owner, allowed_orgs))
+
 def _codeowners_impl(ctx):
     path = "/" + ctx.label.package + "/"
 
@@ -87,7 +104,7 @@ def _codeowners_impl(ctx):
         patterns = [ctx.attr.pattern]
 
     for team in teams:
-        _check_value(ctx.label, "team", team)
+        _check_owner(ctx.label, "team", team)
     for pattern in patterns:
         _check_value(ctx.label, "pattern", pattern)
 
@@ -176,7 +193,9 @@ def _generate_codeowners_impl(ctx):
 
     for attr in ["global_owners", "fallback_owners"]:
         for owner in getattr(ctx.attr, attr):
-            _check_value(ctx.label, attr, owner)
+            _check_owner(ctx.label, attr, owner)
+
+    allowed_orgs = [org.lower() for org in ctx.attr.allowed_orgs]
 
     global_owners = ctx.attr.global_owners
 
@@ -187,6 +206,9 @@ def _generate_codeowners_impl(ctx):
                 if ctx.attr.validate and not entry.path.startswith(entry.package_path):
                     fail("%s writes the row %s, which is outside its package %s. validate = True only allows rows in the package of their codeowners." % (entry.label, entry.path, entry.package_path))
                 entry = _with_owners(entry, _row_owners(entry, global_owners, ctx.attr.sort_owners))
+                if allowed_orgs:
+                    for owner in entry.owners:
+                        _check_allowed_org(entry.label, owner, allowed_orgs)
             entries.append(entry)
 
     # The fallback and global owners own everything that no other row matches. This row must be first, as the last
@@ -195,6 +217,9 @@ def _generate_codeowners_impl(ctx):
     lines = _render(entries)
     if len(ctx.attr.fallback_owners) > 0 or len(global_owners) > 0:
         fallback = _row("*", ctx.attr.fallback_owners, True, str(ctx.label), "")
+        if allowed_orgs:
+            for owner in fallback.owners + global_owners:
+                _check_allowed_org(ctx.label, owner, allowed_orgs)
         lines = [_entry_text(_with_owners(fallback, _row_owners(fallback, global_owners, ctx.attr.sort_owners)))] + lines
 
     content = ctx.attr.generated_comment + "\n\n"
@@ -233,6 +258,7 @@ would come after the `*` row of the global owners and replace it.
         "owners": attr.label_list(mandatory = True, providers = [CodeownersInfo], doc = "A list of codeowners and generate_codeowners. One generate_codeowners can include another generate_codeowners to achieve nested rules."),
         "global_owners": attr.string_list(mandatory = False, doc = "A list of GitHub teams that own all files. They are written as a `*` row first in the file, and added to the rows of all `codeowners`, so that they can approve changes everywhere, including the rows of nested generate_codeowners. Can not be set on a generate_codeowners that is nested in another."),
         "validate": attr.bool(default = False, doc = "Set to True to fail the build when a row is outside the package of its `codeowners`, which a pattern starting with `//` allows. This applies to the rows of nested generate_codeowners too.", mandatory = False),
+        "allowed_orgs": attr.string_list(mandatory = False, doc = "The GitHub organizations that teams (`@org/team`) can be in, usually the one that owns the repository. When set, a team in any other organization fails the build, since GitHub ignores it in CODEOWNERS. This applies to the rows of nested generate_codeowners, the `global_owners` and the `fallback_owners`. Users and email addresses are always allowed."),
         "fallback_owners": attr.string_list(mandatory = False, doc = "A list of GitHub teams that own the files that no other row matches. They are written in the `*` row first in the file, followed by the `global_owners`, but not added to any other row. Can not be set on a generate_codeowners that is nested in another."),
         "sort_owners": attr.bool(default = False, mandatory = False, doc = "Set to True to sort the owners of each row (by their bytes, after the `global_owners` are added), and remove duplicate owners. The `*` row is sorted too. This applies to the rows of nested generate_codeowners too."),
     },

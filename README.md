@@ -78,6 +78,10 @@ generate_codeowners(
 
     # Optional: fail the build when a codeowners writes a row outside its package, with a // pattern.
     validate = True,
+
+    # Optional: fail the build when a team (@org/team) is in another GitHub organization. GitHub ignores those teams
+    # in CODEOWNERS, so they could not approve changes.
+    allowed_orgs = ["org"],
 )
 ```
 
