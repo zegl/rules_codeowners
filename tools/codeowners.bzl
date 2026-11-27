@@ -111,6 +111,9 @@ def _generate_codeowners_impl(ctx):
             "OUTFILE": ctx.outputs.outfile.path,
             "ROWSFILE": rows.path,
             "VALIDATE": "1" if ctx.attr.validate else "0",
+            # Passed as data, never spliced into the script, so the shell
+            # does not evaluate backticks, $(...), quotes etc. in it.
+            "GENERATED_COMMENT": ctx.attr.generated_comment,
         },
         command = """
 set -euo pipefail
@@ -155,10 +158,9 @@ done
 # above them when this generate_codeowners is nested in another.
 awk 'NF == 0 { blank = 1; next } { if (blank) { print "" } blank = 0; print }' "$body" > "$ROWSFILE"
 
-echo "_GENERATED_COMMENT_" > "$OUTFILE"
-echo "" >> "$OUTFILE"
+printf '%s\n\n' "$GENERATED_COMMENT" > "$OUTFILE"
 awk 'NF == 0 && !printed { next } { printed = 1; print }' "$ROWSFILE" >> "$OUTFILE"
-        """.replace("_GENERATED_COMMENT_", ctx.attr.generated_comment),
+        """,
     )
 
     return [

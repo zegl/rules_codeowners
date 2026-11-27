@@ -196,3 +196,25 @@ codeowners(
     teams = ["@foo", "@bar"],
     unowned = True,
 )
+
+# The header must be written verbatim, never evaluated by the shell.
+generate_codeowners(
+    name = "github_codeowners_shell_metachars_comment",
+    generated_comment = "# Run `mise run codeowners` $(touch /tmp/pwned) $HOME \"quoted\" 'single' \\n",
+    owners = [
+        "//tests/hey:codeowners",
+    ],
+)
+
+sh_test(
+    name = "validate_codeowners_shell_metachars_comment",
+    srcs = ["//tools:diff.sh"],
+    args = [
+        "$(location :github_codeowners_shell_metachars_comment.out)",
+        "$(location github_codeowners_shell_metachars_comment_golden)",
+    ],
+    data = [
+        "github_codeowners_shell_metachars_comment_golden",
+        ":github_codeowners_shell_metachars_comment.out",
+    ],
+)

@@ -1,0 +1,3 @@
+# Run `mise run codeowners` $(touch /tmp/pwned) $HOME "quoted" 'single' \n
+
+/tests/hey/ @org/foo
