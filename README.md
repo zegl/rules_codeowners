@@ -32,6 +32,8 @@ codeowners(
     # Set either team or teams to assign the GitHub team ownership
     team = "@org/foo",
     # teams = ["@org/team1", "@org/team2"],
+    # ... or explicitly mark the matching files as having no owner
+    # unowned = True,
 
     visibility = ["//visibility:public"],
 

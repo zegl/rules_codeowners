@@ -9,13 +9,14 @@
 <pre>
 load("@rules_codeowners//tools:codeowners.bzl", "codeowners")
 
-codeowners(<a href="#codeowners-name">name</a>, <a href="#codeowners-comment">comment</a>, <a href="#codeowners-pattern">pattern</a>, <a href="#codeowners-patterns">patterns</a>, <a href="#codeowners-team">team</a>, <a href="#codeowners-teams">teams</a>)
+codeowners(<a href="#codeowners-name">name</a>, <a href="#codeowners-comment">comment</a>, <a href="#codeowners-pattern">pattern</a>, <a href="#codeowners-patterns">patterns</a>, <a href="#codeowners-team">team</a>, <a href="#codeowners-teams">teams</a>, <a href="#codeowners-unowned">unowned</a>)
 </pre>
 
 A codeowners-rule represents one or many rows in a CODEOWNERS file.
 
 `team` and `teams` are mutually exclusive.
 `pattern` and `patterns` are mutually exclusive.
+`unowned` can not be combined with `team` or `teams`.
 
 **ATTRIBUTES**
 
@@ -26,8 +27,9 @@ A codeowners-rule represents one or many rows in a CODEOWNERS file.
 | <a id="codeowners-comment"></a>comment |  A comment to print above the rows, after a blank line. Each line of it becomes a `#` line in the generated CODEOWNERS.   | String | optional |  `""`  |
 | <a id="codeowners-pattern"></a>pattern |  A pattern of files (eg: '*.bzl') that the team(s) should get ownership of. In the generated CODEOWNERS, the path to this target will be prepended to the pattern.   | String | optional |  `""`  |
 | <a id="codeowners-patterns"></a>patterns |  A list of patterns, one row will be printed per pattern. See docs of `pattern` for more info.   | List of strings | optional |  `[]`  |
-| <a id="codeowners-team"></a>team |  The GitHub team that should get ownership of the matching files. One of team and teams must be set.   | String | optional |  `""`  |
-| <a id="codeowners-teams"></a>teams |  A list of the GitHub teams that should get ownership of the matching files. One of team and teams must be set.   | List of strings | optional |  `[]`  |
+| <a id="codeowners-team"></a>team |  The GitHub team that should get ownership of the matching files. One of team, teams and unowned must be set.   | String | optional |  `""`  |
+| <a id="codeowners-teams"></a>teams |  A list of the GitHub teams that should get ownership of the matching files. One of team, teams and unowned must be set.   | List of strings | optional |  `[]`  |
+| <a id="codeowners-unowned"></a>unowned |  Set to True to explicitly mark the matching files as having no owner. The row is written without any teams, which overrides ownership from earlier rows. Can not be combined with team or teams.   | Boolean | optional |  `False`  |
 
 
 <a id="generate_codeowners"></a>
