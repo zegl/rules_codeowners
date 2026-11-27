@@ -46,6 +46,8 @@ codeowners(
 
     comment = "Frontend code", # Printed as "# Frontend code" above the rows, after a blank line.
                                # A multi-line string becomes one "#" line per line.
+
+    include_global_owners = False, # Don't add the global_owners of the generate_codeowners to these rows.
 )
 
 # The generate_codeowners rule ties together multiple codeowners (and generate_codeowners) rules, and
@@ -58,6 +60,11 @@ generate_codeowners(
     owners = [
         ":team_rule",
     ],
+
+    # Optional: teams that own all files. Writes a "* @org/global-approvers" row first, and adds the teams to the
+    # rows of all codeowners (except those with include_global_owners = False or unowned = True).
+    # Can not be combined with nested generate_codeowners.
+    global_owners = ["@org/global-approvers"],
 )
 ```
 
