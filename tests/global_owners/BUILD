@@ -94,23 +94,38 @@ sh_test(
     ],
 )
 
-failure_testing_test(
-    name = "global_owners_with_nested",
-    expected = "global_owners can not be combined with nested generate_codeowners",
-    target_under_test = ":global_owners_with_nested_rule",
-)
-
+# The rows of a nested generate_codeowners get the global owners, as their own include_global_owners says
 generate_codeowners(
-    name = "global_owners_with_nested_rule",
-    global_owners = ["@global"],
-    owners = [":nested_without_global_owners"],
-    tags = ["manual"],
+    name = "github_codeowners_nested",
+    global_owners = ["@global-1", "@global-2"],
+    owners = [
+        ":single_team",
+        ":nested_without_global_owners",
+    ],
 )
 
 generate_codeowners(
     name = "nested_without_global_owners",
-    owners = [":single_team"],
-    tags = ["manual"],
+    owners = [
+        ":multi_pattern",
+        ":already_global",
+        ":opted_out",
+        ":unowned",
+        ":with_comment",
+    ],
+)
+
+sh_test(
+    name = "validate_codeowners_nested",
+    srcs = ["//tools:diff.sh"],
+    args = [
+        "$(location :github_codeowners_nested.out)",
+        "$(location github_codeowners_golden)",
+    ],
+    data = [
+        "github_codeowners_golden",
+        ":github_codeowners_nested.out",
+    ],
 )
 
 failure_testing_test(
