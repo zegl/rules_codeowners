@@ -29,7 +29,7 @@ or `unowned = True`.
 | <a id="codeowners-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
 | <a id="codeowners-comment"></a>comment |  A comment to print above the rows, after a blank line. Each line of it becomes a `#` line in the generated CODEOWNERS.   | String | optional |  `""`  |
 | <a id="codeowners-include_global_owners"></a>include_global_owners |  Set to False to not add the `global_owners` of the `generate_codeowners` to these rows.   | Boolean | optional |  `True`  |
-| <a id="codeowners-pattern"></a>pattern |  A pattern of files (eg: '*.bzl') that the team(s) should get ownership of. In the generated CODEOWNERS, the path to this target will be prepended to the pattern.   | String | optional |  `""`  |
+| <a id="codeowners-pattern"></a>pattern |  A pattern of files (eg: '*.bzl') that the team(s) should get ownership of. In the generated CODEOWNERS, the path to this target will be prepended to the pattern. A pattern starting with `//` is anchored at the root of the repository instead, eg `//docs/foo/` becomes `/docs/foo/`, so a package can own files outside of it.   | String | optional |  `""`  |
 | <a id="codeowners-patterns"></a>patterns |  A list of patterns, one row will be printed per pattern. See docs of `pattern` for more info.   | List of strings | optional |  `[]`  |
 | <a id="codeowners-team"></a>team |  The GitHub team that should get ownership of the matching files. One of team, teams and unowned must be set.   | String | optional |  `""`  |
 | <a id="codeowners-teams"></a>teams |  A list of the GitHub teams that should get ownership of the matching files. One of team, teams and unowned must be set.   | List of strings | optional |  `[]`  |
@@ -43,14 +43,19 @@ or `unowned = True`.
 <pre>
 load("@rules_codeowners//tools:codeowners.bzl", "generate_codeowners")
 
-generate_codeowners(<a href="#generate_codeowners-name">name</a>, <a href="#generate_codeowners-generated_comment">generated_comment</a>, <a href="#generate_codeowners-global_owners">global_owners</a>, <a href="#generate_codeowners-owners">owners</a>, <a href="#generate_codeowners-sort_owners">sort_owners</a>, <a href="#generate_codeowners-validate">validate</a>)
+generate_codeowners(<a href="#generate_codeowners-name">name</a>, <a href="#generate_codeowners-allowed_orgs">allowed_orgs</a>, <a href="#generate_codeowners-fallback_owners">fallback_owners</a>, <a href="#generate_codeowners-generated_comment">generated_comment</a>, <a href="#generate_codeowners-global_owners">global_owners</a>, <a href="#generate_codeowners-owners">owners</a>,
+                    <a href="#generate_codeowners-sort_owners">sort_owners</a>, <a href="#generate_codeowners-validate">validate</a>)
 </pre>
 
 Creates a GitHub-compatible CODEOWNERS file based on the `owners`.
 
 When `global_owners` is set, a `*` row with the global owners is written first, and the global owners are added to
-all other rows (unless the `codeowners` sets `include_global_owners = False`, or `unowned = True`). A
-`generate_codeowners` with `global_owners` can not include, or be included in, another `generate_codeowners`.
+all other rows (unless the `codeowners` sets `include_global_owners = False`, or `unowned = True`). This includes the
+rows of nested `generate_codeowners`, which can not set `global_owners` themselves.
+
+When `fallback_owners` is set, they own the `*` row together with the global owners, but are not added to the other
+rows. Use it for the owners of files that no other row matches, instead of a `codeowners` with `pattern = "*"`, which
+would come after the `*` row of the global owners and replace it.
 
 **ATTRIBUTES**
 
@@ -58,11 +63,13 @@ all other rows (unless the `codeowners` sets `include_global_owners = False`, or
 | Name  | Description | Type | Mandatory | Default |
 | :------------- | :------------- | :------------- | :------------- | :------------- |
 | <a id="generate_codeowners-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
+| <a id="generate_codeowners-allowed_orgs"></a>allowed_orgs |  The GitHub organizations that teams (`@org/team`) can be in, usually the one that owns the repository. When set, a team in any other organization fails the build, since GitHub ignores it in CODEOWNERS. This applies to the rows of nested generate_codeowners, the `global_owners` and the `fallback_owners`. Users and email addresses are always allowed.   | List of strings | optional |  `[]`  |
+| <a id="generate_codeowners-fallback_owners"></a>fallback_owners |  A list of GitHub teams that own the files that no other row matches. They are written in the `*` row first in the file, followed by the `global_owners`, but not added to any other row. Can not be set on a generate_codeowners that is nested in another.   | List of strings | optional |  `[]`  |
 | <a id="generate_codeowners-generated_comment"></a>generated_comment |  A comment to insert at the top of the generated file   | String | optional |  `"# This file was generated by rules_codeowners / Bazel. Don't edit it directly"`  |
-| <a id="generate_codeowners-global_owners"></a>global_owners |  A list of GitHub teams that own all files. They are written as a `*` row first in the file, and added to the rows of all `codeowners`, so that they can approve changes everywhere. Can not be combined with nested generate_codeowners.   | List of strings | optional |  `[]`  |
+| <a id="generate_codeowners-global_owners"></a>global_owners |  A list of GitHub teams that own all files. They are written as a `*` row first in the file, and added to the rows of all `codeowners`, so that they can approve changes everywhere, including the rows of nested generate_codeowners. Can not be set on a generate_codeowners that is nested in another.   | List of strings | optional |  `[]`  |
 | <a id="generate_codeowners-owners"></a>owners |  A list of codeowners and generate_codeowners. One generate_codeowners can include another generate_codeowners to achieve nested rules.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | required |  |
-| <a id="generate_codeowners-sort_owners"></a>sort_owners |  Set to True to sort the owners of each row (by their bytes, after the `global_owners` are added), and remove duplicate owners. This applies to the rows of nested generate_codeowners too.   | Boolean | optional |  `False`  |
-| <a id="generate_codeowners-validate"></a>validate |  Set to True to enable strict validation of codeowners values. Disabled by default.   | Boolean | optional |  `False`  |
+| <a id="generate_codeowners-sort_owners"></a>sort_owners |  Set to True to sort the owners of each row (by their bytes, after the `global_owners` are added), and remove duplicate owners. The `*` row is sorted too. This applies to the rows of nested generate_codeowners too.   | Boolean | optional |  `False`  |
+| <a id="generate_codeowners-validate"></a>validate |  Set to True to fail the build when a row is outside the package of its `codeowners`, which a pattern starting with `//` allows. This applies to the rows of nested generate_codeowners too.   | Boolean | optional |  `False`  |
 
 
 <a id="CodeownersInfo"></a>
@@ -72,7 +79,7 @@ all other rows (unless the `codeowners` sets `include_global_owners = False`, or
 <pre>
 load("@rules_codeowners//tools:codeowners.bzl", "CodeownersInfo")
 
-CodeownersInfo(<a href="#CodeownersInfo-rows">rows</a>, <a href="#CodeownersInfo-include_global_owners">include_global_owners</a>)
+CodeownersInfo(<a href="#CodeownersInfo-entries">entries</a>)
 </pre>
 
 The CODEOWNERS rows of a codeowners or generate_codeowners target, without the generated header.
@@ -81,7 +88,6 @@ The CODEOWNERS rows of a codeowners or generate_codeowners target, without the g
 
 | Name  | Description |
 | :------------- | :------------- |
-| <a id="CodeownersInfo-rows"></a>rows |  File with the rows, and any comments above them.    |
-| <a id="CodeownersInfo-include_global_owners"></a>include_global_owners |  Whether the global_owners of a generate_codeowners should be added to the rows.    |
+| <a id="CodeownersInfo-entries"></a>entries |  The rows, and the comment and blank lines above them, in order. Each is a struct with: `text`: the comment or blank line, or None for a row. `path`: the path of the row, or None for a comment or blank line. `owners`: the owners of the row. `include_global_owners`: whether the global_owners of a generate_codeowners should be added to the row. `label`: the label of the codeowners that wrote the row. `package_path`: the path of that codeowners' package, which the row is expected to start with.    |
 
 

@@ -40,6 +40,8 @@ codeowners(
     # Optional rules below
     pattern = "*.js", # Adds pattern to the end of the path if this rule label is
                       # //foo/bar:codeowner, this would create an entry for /foo/bar/*.js
+                      # A pattern starting with // is anchored at the root of the repository instead,
+                      # "//docs/bar/" creates an entry for /docs/bar/.
 
     patterns = ["*.js", "*.ts"], # Same as pattern, but generates multiple rows, one for each pattern.
                                  # Only one of pattern and patterns can be set at the same time.
@@ -62,12 +64,24 @@ generate_codeowners(
     ],
 
     # Optional: teams that own all files. Writes a "* @org/global-approvers" row first, and adds the teams to the
-    # rows of all codeowners (except those with include_global_owners = False or unowned = True).
-    # Can not be combined with nested generate_codeowners.
+    # rows of all codeowners (except those with include_global_owners = False or unowned = True), including those
+    # of nested generate_codeowners. A nested generate_codeowners can not set global_owners.
     global_owners = ["@org/global-approvers"],
+
+    # Optional: teams that own the files that no other row matches. They join the global_owners in the "*" row, but
+    # are not added to the other rows. Use it instead of a codeowners with pattern = "*", which would come after the
+    # "*" row of the global_owners and replace it. A nested generate_codeowners can not set fallback_owners.
+    fallback_owners = ["@org/maintainers"],
 
     # Optional: sort the owners of each row, and remove duplicates.
     sort_owners = True,
+
+    # Optional: fail the build when a codeowners writes a row outside its package, with a // pattern.
+    validate = True,
+
+    # Optional: fail the build when a team (@org/team) is in another GitHub organization. GitHub ignores those teams
+    # in CODEOWNERS, so they could not approve changes.
+    allowed_orgs = ["org"],
 )
 ```
 

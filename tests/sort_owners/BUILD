@@ -24,6 +24,15 @@ generate_codeowners(
     validate = True,
 )
 
+# The "*" row is sorted too
+generate_codeowners(
+    name = "fallback_owners",
+    fallback_owners = ["@z-fallback", "@b-global", "@a-fallback"],
+    global_owners = ["@m-global", "@b-global"],
+    owners = [":unsorted"],
+    sort_owners = True,
+)
+
 # Without global_owners, and with a nested generate_codeowners that doesn't sort
 generate_codeowners(
     name = "nested",
@@ -84,5 +93,6 @@ codeowners(
         ("global_owners", "global_owners_golden"),
         ("global_owners_strict", "global_owners_golden"),
         ("nested", "nested_golden"),
+        ("fallback_owners", "fallback_owners_golden"),
     ]
 ]
