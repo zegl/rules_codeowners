@@ -118,6 +118,11 @@ def _generate_codeowners_impl(ctx):
         else:
             all_ownership_files.extend([(file, True) for file in owner.files.to_list()])
 
+    global_owners = ctx.attr.global_owners
+    if ctx.attr.sort_owners:
+        # The "*" row is written as it is, so sort it here
+        global_owners = sorted({owner: None for owner in global_owners}.keys())
+
     args = []
 
     for file, include_global_owners in all_ownership_files:
@@ -144,7 +149,10 @@ def _generate_codeowners_impl(ctx):
             # Passed as data, never spliced into the script, so the shell
             # does not evaluate backticks, $(...), quotes etc. in it.
             "GENERATED_COMMENT": ctx.attr.generated_comment,
-            "GLOBAL_OWNERS": " ".join(ctx.attr.global_owners),
+            "GLOBAL_OWNERS": " ".join(global_owners),
+            "SORT_OWNERS": "1" if ctx.attr.sort_owners else "0",
+            # Owners are sorted by their bytes, not by the collation of the host's locale
+            "LC_ALL": "C",
         },
         command = """
 set -euo pipefail
@@ -158,29 +166,54 @@ echoerr() {
 # With VALIDATE=1, rows that don't match the path of the target that wrote them are skipped, and a file where no row
 # matches fails the build.
 # With add_global=1, the GLOBAL_OWNERS that are not already owners of a row are added to the end of it.
+# With SORT_OWNERS=1, the owners of each row are sorted, and duplicates are removed.
 filter_rows () {
     file=$1
     must_have_prefix=$2
     add_global=$3
 
-    awk -v prefix="$must_have_prefix" -v validate="$VALIDATE" -v add_global="$add_global" -v global="$GLOBAL_OWNERS" '
+    awk -v prefix="$must_have_prefix" -v validate="$VALIDATE" -v add_global="$add_global" -v global="$GLOBAL_OWNERS" -v sort="$SORT_OWNERS" '
         /^#/ || /^$/ { print; next }
         /#/ { next }
         {
             # The prefix is compared as a literal string, at the start of the row
             if (validate == 1 && prefix != "" && index($0, prefix) != 1) { next }
             matched++
+            if (add_global != 1 && sort != 1) { print; next }
+
+            # The path is the first field, and the fields after it that an escaped space ("\\ ") split it into
+            k = 1
+            while (k < NF && $k ~ /\\\\$/) { k++ }
+            row = $1
+            for (i = 2; i <= k; i++) { row = row " " $i }
+            n = 0
+            for (i = k + 1; i <= NF; i++) { owners[++n] = $i }
+
             if (add_global == 1) {
-                n = split(global, owners, " ")
-                for (i = 1; i <= n; i++) {
+                g = split(global, globals, " ")
+                for (i = 1; i <= g; i++) {
                     found = 0
-                    for (j = 2; j <= NF; j++) {
-                        if ($j == owners[i]) { found = 1; break }
+                    for (j = 1; j <= n; j++) {
+                        if (owners[j] == globals[i]) { found = 1; break }
                     }
-                    if (!found) { $0 = $0 " " owners[i] }
+                    if (!found) { owners[++n] = globals[i] }
                 }
             }
-            print
+
+            if (sort == 1) {
+                # Insertion sort, the rows are short. Appending "" compares the owners as strings.
+                for (i = 2; i <= n; i++) {
+                    owner = owners[i]
+                    for (j = i - 1; j >= 1 && (owners[j] "") > (owner ""); j--) { owners[j + 1] = owners[j] }
+                    owners[j + 1] = owner
+                }
+            }
+
+            for (i = 1; i <= n; i++) {
+                if (sort == 1 && i > 1 && owners[i] == owners[i - 1]) { continue }
+                row = row " " owners[i]
+            }
+            print row
         }
         END { if (validate == 1 && matched == 0) { exit 1 } }
     ' "$file" || echoerr "Potentially malicious input detected, path did not match '${must_have_prefix}' (file = '${file}')"
@@ -235,6 +268,7 @@ all other rows (unless the `codeowners` sets `include_global_owners = False`, or
         "owners": attr.label_list(mandatory = True, doc = "A list of codeowners and generate_codeowners. One generate_codeowners can include another generate_codeowners to achieve nested rules."),
         "global_owners": attr.string_list(mandatory = False, doc = "A list of GitHub teams that own all files. They are written as a `*` row first in the file, and added to the rows of all `codeowners`, so that they can approve changes everywhere. Can not be combined with nested generate_codeowners."),
         "validate": attr.bool(default = False, doc = "Set to True to enable strict validation of codeowners values. Disabled by default.", mandatory = False),
+        "sort_owners": attr.bool(default = False, mandatory = False, doc = "Set to True to sort the owners of each row (by their bytes, after the `global_owners` are added), and remove duplicate owners. This applies to the rows of nested generate_codeowners too."),
     },
     outputs = {
         "outfile": "%{name}.out",

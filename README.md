@@ -65,6 +65,9 @@ generate_codeowners(
     # rows of all codeowners (except those with include_global_owners = False or unowned = True).
     # Can not be combined with nested generate_codeowners.
     global_owners = ["@org/global-approvers"],
+
+    # Optional: sort the owners of each row, and remove duplicates.
+    sort_owners = True,
 )
 ```
 
