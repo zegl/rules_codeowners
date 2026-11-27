@@ -14,6 +14,8 @@ generate_codeowners(
         ":multi_pattern_multi_team",
         ":no_pattern_single_team",
         ":no_pattern_multi_team",
+        ":single_pattern_unowned",
+        ":multi_pattern_unowned",
     ],
 )
 
@@ -29,6 +31,8 @@ generate_codeowners(
         ":multi_pattern_multi_team",
         ":no_pattern_single_team",
         ":no_pattern_multi_team",
+        ":single_pattern_unowned",
+        ":multi_pattern_unowned",
     ],
     validate=True,
 )
@@ -65,6 +69,18 @@ codeowners(
 codeowners(
     name = "no_pattern_multi_team",
     teams = ["@the-f1-team", "@the-f2-team"],
+)
+
+codeowners(
+    name = "single_pattern_unowned",
+    pattern = "*.generated",
+    unowned = True,
+)
+
+codeowners(
+    name = "multi_pattern_unowned",
+    patterns = ["*.lock", "vendor/"],
+    unowned = True,
 )
 
 sh_test(
@@ -133,7 +149,7 @@ codeowners(
 
 failure_testing_test(
     name = "neither_team_nor_teams_set",
-    expected = "Either team or teams must be set.",
+    expected = "Either team or teams must be set, or unowned = True.",
     target_under_test = ":neither_team_nor_teams_set_rule",
 )
 
@@ -154,4 +170,29 @@ codeowners(
     team = "@foo",
     pattern = "foo",
     patterns = ["bar", "baz"],
+)
+failure_testing_test(
+    name = "unowned_and_team_set",
+    expected = "unowned can not be combined with team or teams.",
+    target_under_test = ":unowned_and_team_set_rule",
+)
+
+codeowners(
+    name = "unowned_and_team_set_rule",
+    tags = ["manual"],
+    team = "@foo",
+    unowned = True,
+)
+
+failure_testing_test(
+    name = "unowned_and_teams_set",
+    expected = "unowned can not be combined with team or teams.",
+    target_under_test = ":unowned_and_teams_set_rule",
+)
+
+codeowners(
+    name = "unowned_and_teams_set_rule",
+    tags = ["manual"],
+    teams = ["@foo", "@bar"],
+    unowned = True,
 )

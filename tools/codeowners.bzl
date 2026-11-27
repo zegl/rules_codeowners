@@ -20,13 +20,18 @@ def _codeowners_impl(ctx):
     if ctx.label.package == "":
         path = ""
 
-    if len(ctx.attr.team) == 0 and len(ctx.attr.teams) == 0:
-        fail("Either team or teams must be set.")
+    has_teams = len(ctx.attr.team) > 0 or len(ctx.attr.teams) > 0
+    if ctx.attr.unowned and has_teams:
+        fail("unowned can not be combined with team or teams.")
+    if not ctx.attr.unowned and not has_teams:
+        fail("Either team or teams must be set, or unowned = True.")
     if len(ctx.attr.team) > 0 and len(ctx.attr.teams) > 0:
         fail("Both team and teams can not be set at the same time.")
     if len(ctx.attr.pattern) > 0 and len(ctx.attr.patterns) > 0:
         fail("Both pattern and patterns can not be set at the same time.")
 
+    # Unowned entries are written without any owners, which makes GitHub
+    # treat the matching files as having no code owner.
     teams = ctx.attr.teams
     if len(ctx.attr.team) > 0:
         teams = [ctx.attr.team]
@@ -38,7 +43,7 @@ def _codeowners_impl(ctx):
     elif len(ctx.attr.pattern) > 0:
         patterns = [ctx.attr.pattern]
 
-    rows = ["%s%s %s" % (path, pattern, " ".join(teams)) for pattern in patterns]
+    rows = [" ".join([path + pattern] + teams) for pattern in patterns]
     content = "\n".join(_comment_lines(ctx.attr.comment) + rows)
 
     ctx.actions.write(
@@ -58,11 +63,13 @@ A codeowners-rule represents one or many rows in a CODEOWNERS file.
 
 `team` and `teams` are mutually exclusive.
 `pattern` and `patterns` are mutually exclusive.
+`unowned` can not be combined with `team` or `teams`.
 """,
     attrs = {
         "comment": attr.string(mandatory = False, doc = "A comment to print above the rows, after a blank line. Each line of it becomes a `#` line in the generated CODEOWNERS."),
-        "team": attr.string(mandatory = False, doc = "The GitHub team that should get ownership of the matching files. One of team and teams must be set."),
-        "teams": attr.string_list(mandatory = False, doc = "A list of the GitHub teams that should get ownership of the matching files. One of team and teams must be set."),
+        "team": attr.string(mandatory = False, doc = "The GitHub team that should get ownership of the matching files. One of team, teams and unowned must be set."),
+        "teams": attr.string_list(mandatory = False, doc = "A list of the GitHub teams that should get ownership of the matching files. One of team, teams and unowned must be set."),
+        "unowned": attr.bool(default = False, mandatory = False, doc = "Set to True to explicitly mark the matching files as having no owner. The row is written without any teams, which overrides ownership from earlier rows. Can not be combined with team or teams."),
         "pattern": attr.string(mandatory = False, doc = "A pattern of files (eg: '*.bzl') that the team(s) should get ownership of. In the generated CODEOWNERS, the path to this target will be prepended to the pattern."),
         "patterns": attr.string_list(mandatory = False, doc = "A list of patterns, one row will be printed per pattern. See docs of `pattern` for more info."),
     },

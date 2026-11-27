@@ -11,3 +11,6 @@
 /tests/d*2 @the-d1-team @the-d2-team
 /tests/ @the-e-team
 /tests/ @the-f1-team @the-f2-team
+/tests/*.generated
+/tests/*.lock
+/tests/vendor/
