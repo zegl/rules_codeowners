@@ -134,7 +134,8 @@ filter_rows () {
         /^#/ || /^$/ { print; next }
         /#/ { next }
         {
-            if (validate == 1 && $0 !~ prefix) { next }
+            # The prefix is compared as a literal string, at the start of the row
+            if (validate == 1 && prefix != "" && index($0, prefix) != 1) { next }
             matched++
             print
         }
